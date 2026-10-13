@@ -45,44 +45,44 @@ export default function StatCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-card border-l-4 card-interactive",
+        "relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-card border-l-4 card-interactive min-w-0",
         accentStyles[accentColor]
       )}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">
             {title}
           </p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <h3 className="font-display text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+          <div className="mt-2 flex items-baseline gap-2 min-w-0">
+            <h3 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums break-words">
               {value}
             </h3>
           </div>
         </div>
         <div
           className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg border",
+            "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg border",
             iconStyles[accentColor]
           )}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs pt-3 border-t border-slate-100 min-w-0">
         {subtitle && (
           <span className="text-slate-500 truncate">{subtitle}</span>
         )}
         {isEmpty && emptyText && (
-          <span className="text-slate-400 italic text-[11px]">
+          <span className="text-slate-400 italic text-[11px] truncate">
             {emptyText}
           </span>
         )}
         {trend && (
           <span
             className={cn(
-              "font-medium text-[11px]",
+              "font-medium text-[11px] shrink-0",
               trend.isPositive ? "text-emerald-600" : "text-amber-600"
             )}
           >

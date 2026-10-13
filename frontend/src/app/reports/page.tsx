@@ -258,80 +258,80 @@ export default function ReportsPage() {
 
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between min-h-[105px]">
+        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 min-h-[105px] min-w-0">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-l-xl" />
-          <div className="pl-1.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="pl-1.5 min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
               Authoritative Stock
             </p>
-            <h3 className="font-display text-2xl font-extrabold text-slate-900 mt-1">
+            <h3 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 mt-1 tabular-nums break-words">
               {isKpiLoading ? (
                 <Skeleton className="h-7 w-28" />
               ) : (
                 `${Number(kpiData?.totalStockKg || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG`
               )}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-1">
+            <p className="text-xs font-medium text-slate-500 mt-1 truncate">
               {kpiData?.totalStockBags ?? 0} active physical bags
             </p>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
             <Boxes className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between min-h-[105px]">
+        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 min-h-[105px] min-w-0">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l-xl" />
-          <div className="pl-1.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="pl-1.5 min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
               Total Inward Received
             </p>
-            <h3 className="font-display text-2xl font-extrabold text-slate-900 mt-1">
+            <h3 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 mt-1 tabular-nums break-words">
               {isKpiLoading ? (
                 <Skeleton className="h-7 w-28" />
               ) : (
                 `${Number(kpiData?.receivedKg || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG`
               )}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-1">Supplier gate passes</p>
+            <p className="text-xs font-medium text-slate-500 mt-1 truncate">Supplier gate passes</p>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
             <ArrowDownLeft className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between min-h-[105px]">
+        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 min-h-[105px] min-w-0">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-500 rounded-l-xl" />
-          <div className="pl-1.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="pl-1.5 min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
               Total Issued to Floor
             </p>
-            <h3 className="font-display text-2xl font-extrabold text-slate-900 mt-1">
+            <h3 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 mt-1 tabular-nums break-words">
               {isKpiLoading ? (
                 <Skeleton className="h-7 w-28" />
               ) : (
                 `${Number(kpiData?.issuedKg || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG`
               )}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-1">Production allocations</p>
+            <p className="text-xs font-medium text-slate-500 mt-1 truncate">Production allocations</p>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
             <ArrowUpRight className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between min-h-[105px]">
+        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 min-h-[105px] min-w-0">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-l-xl" />
-          <div className="pl-1.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="pl-1.5 min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
               Active Master Lots
             </p>
-            <h3 className="font-display text-2xl font-extrabold text-slate-900 mt-1">
+            <h3 className="font-display text-xl sm:text-2xl font-extrabold text-slate-900 mt-1 tabular-nums break-words">
               {isKpiLoading ? <Skeleton className="h-7 w-12" /> : kpiData?.totalLotsCount || 0}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-1">Tracked yarn batches</p>
+            <p className="text-xs font-medium text-slate-500 mt-1 truncate">Tracked yarn batches</p>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
             <Factory className="h-5 w-5" />
           </div>
         </div>
@@ -369,8 +369,8 @@ export default function ReportsPage() {
         </div>
 
         {showFilters && (
-          <div className="p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3.5">
+          <div className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
               {/* Report Mode */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -490,8 +490,8 @@ export default function ReportsPage() {
             </div>
 
             {/* Quick Actions Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -513,7 +513,7 @@ export default function ReportsPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-start sm:self-auto">
                 <Button
                   variant="primary"
                   size="sm"

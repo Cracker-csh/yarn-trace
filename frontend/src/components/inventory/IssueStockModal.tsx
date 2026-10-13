@@ -304,7 +304,7 @@ export default function IssueStockModal({
                 <Info className="h-4 w-4 text-amber-600 shrink-0" />
                 <span>PO Requirement Rule: 103% Ceiling Active</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600 pt-0.5 font-medium">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 pt-0.5 font-medium">
                 <div>Required: <span className="font-bold font-mono text-slate-900">{matchingRequirement.requiredKg} KG</span></div>
                 <div>103% Max: <span className="font-bold font-mono text-amber-700">{matchingRequirement.ceiling103Kg} KG</span></div>
                 <div>Issued: <span className="font-bold font-mono text-slate-900">{matchingRequirement.issuedKg} KG</span></div>

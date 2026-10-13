@@ -461,10 +461,10 @@ export default function InventoryPage() {
               </div>
 
               {/* View Navigation Tabs */}
-              <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border">
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border overflow-x-auto max-w-full">
                 <button
                   onClick={() => setActiveTab("lots")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     activeTab === "lots"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -474,7 +474,7 @@ export default function InventoryPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab("transactions")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     activeTab === "transactions"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -484,7 +484,7 @@ export default function InventoryPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab("counts")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     activeTab === "counts"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -494,7 +494,7 @@ export default function InventoryPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab("parties")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     activeTab === "parties"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -510,7 +510,7 @@ export default function InventoryPage() {
             {/* 1. LOT-WISE STOCK VIEW */}
             {activeTab === "lots" && (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[1050px] text-xs text-left">
                   <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Lot Number</th>
@@ -653,7 +653,7 @@ export default function InventoryPage() {
             {/* 2. TRANSACTION LEDGER VIEW */}
             {activeTab === "transactions" && (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[1050px] text-xs text-left">
                   <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Date</th>
@@ -759,7 +759,7 @@ export default function InventoryPage() {
             {/* 3. COUNT-WISE STOCK VIEW */}
             {activeTab === "counts" && (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[550px] text-xs text-left">
                   <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Yarn Count (Manual Identity)</th>
@@ -789,7 +789,7 @@ export default function InventoryPage() {
             {/* 4. PARTY-WISE STOCK VIEW */}
             {activeTab === "parties" && (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[550px] text-xs text-left">
                   <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Party / Mill / Supplier</th>

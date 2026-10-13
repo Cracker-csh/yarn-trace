@@ -227,9 +227,9 @@ export default function PurchaseOrderDetailPage() {
           >
             <ArrowLeft className="h-4 w-4 text-slate-600" />
           </Button>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="font-display text-xl font-bold tracking-tight text-slate-900 font-mono">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="font-display text-xl font-bold tracking-tight text-slate-900 font-mono break-words">
                 {po.poNumber}
               </h1>
               <Badge
@@ -254,7 +254,7 @@ export default function PurchaseOrderDetailPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -438,7 +438,7 @@ export default function PurchaseOrderDetailPage() {
 
         {/* Requirements Table (Stage 1 Core Matrix) */}
         <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <CardTitle>Yarn Requirement Breakdown</CardTitle>
               <CardDescription>
@@ -446,14 +446,14 @@ export default function PurchaseOrderDetailPage() {
                 103% issue ceiling
               </CardDescription>
             </div>
-            <Badge variant="brand" className="text-xs">
+            <Badge variant="brand" className="text-xs self-start sm:self-auto">
               {po.requirements.length} Line
               {po.requirements.length === 1 ? "" : "s"}
             </Badge>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[1050px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-3 text-center w-10">#</th>
@@ -626,7 +626,7 @@ export default function PurchaseOrderDetailPage() {
 
         {/* Linked Inventory Transactions Ledger */}
         <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <CardTitle>Linked Warehouse Issue Ledger</CardTitle>
               <CardDescription>
@@ -638,7 +638,7 @@ export default function PurchaseOrderDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => router.push(`/transactions`)}
-              className="gap-1.5 text-xs h-8"
+              className="gap-1.5 text-xs h-8 self-start sm:self-auto"
             >
               <span>Explore All Transactions</span>
               <ExternalLink className="h-3.5 w-3.5" />
@@ -647,7 +647,7 @@ export default function PurchaseOrderDetailPage() {
           <CardContent>
             {allTransactions.length > 0 ? (
               <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[700px] text-xs text-left">
                   <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="py-2.5 px-3">Tx Number</th>

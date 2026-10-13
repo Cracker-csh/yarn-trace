@@ -313,7 +313,7 @@ export default function TransactionsPage() {
 
             {/* Filter controls */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64 min-w-0">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder="Search tx, lot, count, party..."
@@ -322,7 +322,7 @@ export default function TransactionsPage() {
                     setSearch(e.target.value);
                     setPage(1);
                   }}
-                  className="pl-8 h-9 text-xs"
+                  className="pl-8 h-9 text-xs w-full"
                 />
               </div>
 
@@ -373,7 +373,7 @@ export default function TransactionsPage() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[950px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date & Time</TableHead>

@@ -46,7 +46,7 @@ export default function ViewIssuesModal({
   const totalIssued = transactions.reduce((sum, t) => sum + t.kilos, 0);
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-transparent"
@@ -59,9 +59,9 @@ export default function ViewIssuesModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 sm:px-6 py-3 sm:py-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0">
               <ArrowUpRight className="h-5 w-5" />
             </div>
             <div>
@@ -81,16 +81,16 @@ export default function ViewIssuesModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors shrink-0"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* KPI Mini Header */}
-          <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
             <div>
               <span className="text-[10px] text-slate-400 uppercase font-semibold">
                 Total Required
@@ -120,7 +120,7 @@ export default function ViewIssuesModal({
           {/* Transactions Table */}
           {transactions.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[600px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-2.5 px-3">Tx Number</th>

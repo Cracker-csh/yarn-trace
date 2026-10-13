@@ -241,7 +241,7 @@ export default function ProductionPage() {
 
       {/* Active Work Orders Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div>
             <CardTitle>Active Work Orders</CardTitle>
             <CardDescription>
@@ -249,7 +249,7 @@ export default function ProductionPage() {
             </CardDescription>
           </div>
           {isFetchingOrders && !isLoadingOrders && (
-            <div className="flex items-center gap-1.5 text-xs text-brand-600 font-medium">
+            <div className="flex items-center gap-1.5 text-xs text-brand-600 font-medium self-start sm:self-auto">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               <span>Refreshing...</span>
             </div>
@@ -275,7 +275,7 @@ export default function ProductionPage() {
             />
           ) : (
             <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[1050px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                     <th className="py-3 px-4">Work Order</th>
@@ -394,8 +394,8 @@ export default function ProductionPage() {
 
           {/* Pagination Controls */}
           {meta && meta.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-600">
-              <div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 text-xs text-slate-600">
+              <div className="text-center sm:text-left">
                 Showing page <span className="font-bold">{meta.page}</span> of{" "}
                 <span className="font-bold">{meta.totalPages}</span> ({meta.total} total work orders)
               </div>

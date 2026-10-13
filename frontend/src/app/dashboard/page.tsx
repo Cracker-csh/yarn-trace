@@ -325,7 +325,7 @@ export default function DashboardPage() {
         title="Inventory & Production Overview"
         subtitle="Real-time yarn lot balance, production floor allocations, and end-to-end traceability."
         action={
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -374,7 +374,7 @@ export default function DashboardPage() {
 
       {/* Error Alert */}
       {isError && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between text-xs text-red-900">
+        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-red-900">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
             <span>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
             size="sm"
             variant="outline"
             onClick={() => refetch()}
-            className="h-8 text-xs bg-white text-red-700 hover:bg-red-50 border-red-300"
+            className="h-8 text-xs bg-white text-red-700 hover:bg-red-50 border-red-300 self-start sm:self-auto"
           >
             Retry
           </Button>
@@ -427,14 +427,14 @@ export default function DashboardPage() {
         {/* Left Column: Live Lot Traceability & Production Batches Table */}
         <div className="lg:col-span-8 space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
               <div>
                 <CardTitle>Live Lot Traceability & Batches</CardTitle>
                 <CardDescription>
                   Active spinning lots, warehouse balances, and latest movements
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-start sm:self-auto">
                 <Badge variant="brand" className="gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
                   Live Sync
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                 </div>
               ) : overviewData?.liveLots && overviewData.liveLots.length > 0 ? (
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full min-w-[650px] text-xs text-left">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                       <tr>
                         <th className="py-3 px-3.5">Lot Number</th>

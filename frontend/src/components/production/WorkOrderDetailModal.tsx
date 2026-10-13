@@ -156,13 +156,13 @@ export default function WorkOrderDetailModal({
   return (
     <>
       {createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div
             className="relative w-full max-w-5xl max-h-[92vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/90">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-slate-50/90">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
                 <Factory className="h-5 w-5" />
@@ -202,7 +202,7 @@ export default function WorkOrderDetailModal({
 
           {/* Quick Metrics Bar */}
           {order && (
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 p-4 bg-slate-50 border-b border-slate-200 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-3 sm:p-4 bg-slate-50 border-b border-slate-200 text-xs">
               <div className="bg-white p-2.5 rounded-lg border border-slate-200">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Target Qty</span>
                 <p className="text-sm font-bold font-mono text-slate-900 mt-0.5">
@@ -326,10 +326,10 @@ export default function WorkOrderDetailModal({
           )}
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-4 px-6 border-b border-slate-200 bg-slate-50/50 text-xs font-semibold">
+          <div className="flex items-center gap-2 sm:gap-4 px-4 sm:px-6 border-b border-slate-200 bg-slate-50/50 text-xs font-semibold overflow-x-auto whitespace-nowrap">
             <button
               onClick={() => setActiveTab("allocations")}
-              className={`py-3 border-b-2 transition-colors ${
+              className={`py-3 border-b-2 transition-colors shrink-0 ${
                 activeTab === "allocations"
                   ? "border-brand-600 text-brand-600"
                   : "border-transparent text-slate-500 hover:text-slate-800"
@@ -339,7 +339,7 @@ export default function WorkOrderDetailModal({
             </button>
             <button
               onClick={() => setActiveTab("consumption")}
-              className={`py-3 border-b-2 transition-colors ${
+              className={`py-3 border-b-2 transition-colors shrink-0 ${
                 activeTab === "consumption"
                   ? "border-brand-600 text-brand-600"
                   : "border-transparent text-slate-500 hover:text-slate-800"
@@ -349,7 +349,7 @@ export default function WorkOrderDetailModal({
             </button>
             <button
               onClick={() => setActiveTab("returns")}
-              className={`py-3 border-b-2 transition-colors ${
+              className={`py-3 border-b-2 transition-colors shrink-0 ${
                 activeTab === "returns"
                   ? "border-brand-600 text-brand-600"
                   : "border-transparent text-slate-500 hover:text-slate-800"
@@ -359,7 +359,7 @@ export default function WorkOrderDetailModal({
             </button>
             <button
               onClick={() => setActiveTab("outputs")}
-              className={`py-3 border-b-2 transition-colors ${
+              className={`py-3 border-b-2 transition-colors shrink-0 ${
                 activeTab === "outputs"
                   ? "border-brand-600 text-brand-600"
                   : "border-transparent text-slate-500 hover:text-slate-800"
@@ -369,7 +369,7 @@ export default function WorkOrderDetailModal({
             </button>
             <button
               onClick={() => setActiveTab("traceability")}
-              className={`py-3 border-b-2 transition-colors ${
+              className={`py-3 border-b-2 transition-colors shrink-0 ${
                 activeTab === "traceability"
                   ? "border-brand-600 text-brand-600"
                   : "border-transparent text-slate-500 hover:text-slate-800"
@@ -380,7 +380,7 @@ export default function WorkOrderDetailModal({
           </div>
 
           {/* Tab Content Panels */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {isLoading ? (
               <div className="py-12 text-center text-slate-400">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-brand-600" />
@@ -433,8 +433,8 @@ export default function WorkOrderDetailModal({
                         </Button>
                       </div>
                     ) : (
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-xs border-collapse">
+                      <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                        <table className="w-full min-w-[800px] text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                               <th className="py-3 px-4">Lot Number</th>
@@ -547,8 +547,8 @@ export default function WorkOrderDetailModal({
                         No consumption records logged yet.
                       </div>
                     ) : (
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-xs border-collapse">
+                      <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                        <table className="w-full min-w-[800px] text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                               <th className="py-3 px-4">Date</th>
@@ -653,8 +653,8 @@ export default function WorkOrderDetailModal({
                         No unused yarn returns recorded for this work order.
                       </div>
                     ) : (
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-xs border-collapse">
+                      <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                        <table className="w-full min-w-[700px] text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                               <th className="py-3 px-4">Date</th>
@@ -728,8 +728,8 @@ export default function WorkOrderDetailModal({
                         No finished production outputs logged yet.
                       </div>
                     ) : (
-                      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-xs border-collapse">
+                      <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                        <table className="w-full min-w-[650px] text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                               <th className="py-3 px-4">Completion Date</th>

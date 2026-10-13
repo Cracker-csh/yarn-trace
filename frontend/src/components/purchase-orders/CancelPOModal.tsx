@@ -58,7 +58,7 @@ export default function CancelPOModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-transparent"
@@ -70,7 +70,7 @@ export default function CancelPOModal({
         className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 bg-red-50/50 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-red-50/50 px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-600">
               <AlertTriangle className="h-5 w-5" />
@@ -124,13 +124,14 @@ export default function CancelPOModal({
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               Back
             </Button>
@@ -139,7 +140,7 @@ export default function CancelPOModal({
               variant="destructive"
               size="sm"
               isLoading={isLoading}
-              className="gap-1.5"
+              className="gap-1.5 w-full sm:w-auto"
             >
               <XCircle className="h-4 w-4" />
               <span>Confirm Cancellation</span>

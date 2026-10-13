@@ -168,13 +168,13 @@ export default function ProductionTeamsModal({
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-lg bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
               <Users className="h-5 w-5" />
@@ -195,7 +195,7 @@ export default function ProductionTeamsModal({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Top Actions & Search Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
@@ -343,8 +343,8 @@ export default function ProductionTeamsModal({
           )}
 
           {/* Teams Table */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+            <table className="w-full min-w-[700px] text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4">Code & Team Name</th>
@@ -477,7 +477,7 @@ export default function ProductionTeamsModal({
               ) : teamInventoryDetail?.inventoryBreakdown &&
                 teamInventoryDetail.inventoryBreakdown.length > 0 ? (
                 <div className="overflow-x-auto bg-white border border-slate-200 rounded-lg">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full min-w-[650px] text-left text-xs">
                     <thead>
                       <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold text-[11px]">
                         <th className="py-2.5 px-3">Lot Number</th>

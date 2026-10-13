@@ -159,48 +159,48 @@ export default function AuditLogsPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
+        <Card className="min-w-0">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Total Logged Events
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1 break-words">{totalCount}</p>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600">
+              <div className="h-10 w-10 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600 shrink-0">
                 <Activity className="h-5 w-5" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Ledger Status
                 </p>
-                <p className="text-2xl font-bold text-emerald-600 mt-1">Active</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1 break-words">Active</p>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Security Model
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">Immutable</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1 break-words">Immutable</p>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
                 <Shield className="h-5 w-5" />
               </div>
             </div>
@@ -236,13 +236,13 @@ export default function AuditLogsPage() {
         <CardContent>
           {/* Search bar */}
           <div className="mb-4 flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative w-full max-w-full sm:max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search action, entity or user..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 text-xs"
+                className="pl-9 h-9 text-xs w-full"
               />
             </div>
           </div>
@@ -267,7 +267,7 @@ export default function AuditLogsPage() {
             />
           ) : (
             <div className="rounded-md border border-slate-200">
-              <Table>
+              <Table className="min-w-[750px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Timestamp</TableHead>
@@ -347,14 +347,14 @@ export default function AuditLogsPage() {
 
       {/* Snapshot Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-slate-900 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="p-3 sm:p-4 border-b border-slate-200 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="font-semibold text-slate-900 text-xs sm:text-sm break-words">
                   Audit Snapshot — {selectedLog.action} on {selectedLog.entityType}
                 </h3>
-                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                <p className="text-[10px] sm:text-xs text-slate-500 font-mono mt-0.5 truncate">
                   ID: {selectedLog.id}
                 </p>
               </div>
@@ -362,7 +362,7 @@ export default function AuditLogsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedLog(null)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 shrink-0"
               >
                 ✕
               </Button>

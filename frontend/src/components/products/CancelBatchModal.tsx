@@ -80,7 +80,7 @@ export default function CancelBatchModal({
   const hasDeliveries = batch.deliveriesCount > 0;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-transparent"
@@ -152,13 +152,14 @@ export default function CancelBatchModal({
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 shrink-0">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-slate-100 shrink-0">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
               disabled={cancelMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Close
             </Button>
@@ -167,7 +168,7 @@ export default function CancelBatchModal({
               variant="destructive"
               size="sm"
               disabled={cancelMutation.isPending || hasDeliveries}
-              className="gap-2 bg-rose-600 hover:bg-rose-700 text-white"
+              className="gap-2 bg-rose-600 hover:bg-rose-700 text-white w-full sm:w-auto"
             >
               {cancelMutation.isPending ? (
                 <>

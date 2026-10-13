@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Layers, Lock, Mail, AlertCircle, ArrowRight } from "lucide-react";
+import { Layers, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useAppDispatch } from "../../store/hooks";
 import { setCredentials } from "../../store/slices/authSlice";
 import { apiClient } from "../../lib/axios";
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const dispatch = useAppDispatch();
   const [serverError, setServerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -86,7 +87,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 md:p-8 shadow-card">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 md:p-8 shadow-card">
           <div className="mb-6">
             <h2 className="font-display text-lg font-bold text-slate-900">
               Sign In
@@ -142,12 +143,25 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="pl-9"
+                  className="pl-9 pr-10"
                   error={!!errors.password}
                   {...register("password")}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:text-brand-600 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
               </div>
               {errors.password && (
                 <p className="mt-1 text-[11px] text-red-500">

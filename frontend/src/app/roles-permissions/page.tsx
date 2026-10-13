@@ -293,7 +293,7 @@ export default function RolesPermissionsPage() {
             </div>
           ) : roles.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[700px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Role details</th>

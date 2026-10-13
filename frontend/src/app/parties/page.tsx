@@ -287,72 +287,72 @@ export default function PartiesPage() {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-brand-600 card-interactive stagger-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-brand-600 card-interactive stagger-1 min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">
                 Total Partners
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 tabular-nums break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : totalCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
+            <div className="p-2.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 shrink-0">
               <Users2 className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">All master directory entries</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium truncate">All master directory entries</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-emerald-600 card-interactive stagger-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-emerald-600 card-interactive stagger-2 min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">
                 Spinning Mills
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 tabular-nums break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : suppliersCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
               <Factory className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">Yarn spinning & fiber suppliers</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium truncate">Yarn spinning & fiber suppliers</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-sky-600 card-interactive stagger-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-sky-600 card-interactive stagger-3 min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">
                 Dyeing Units
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 tabular-nums break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : dyeingCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-sky-50 text-sky-600 border border-sky-100">
+            <div className="p-2.5 rounded-lg bg-sky-50 text-sky-600 border border-sky-100 shrink-0">
               <Sparkles className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">External process houses</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium truncate">External process houses</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-purple-600 card-interactive stagger-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-purple-600 card-interactive stagger-4 min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">
                 Customers / Buyers
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 tabular-nums break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : customersCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+            <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
               <Layers className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">Commercial export clients</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium truncate">Commercial export clients</p>
         </div>
       </div>
 
@@ -421,7 +421,7 @@ export default function PartiesPage() {
             </div>
           ) : filteredParties.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[800px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Code</th>

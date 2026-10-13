@@ -213,7 +213,7 @@ export default function ProductDetailPage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Trace Product (Backward Trace) */}
           <Link
             href={`/traceability?product=${encodeURIComponent(
@@ -334,7 +334,7 @@ export default function ProductDetailPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full min-w-[700px] text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                         <th className="px-4 py-2.5">Yarn Count</th>

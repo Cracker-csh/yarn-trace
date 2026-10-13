@@ -19,6 +19,11 @@ import {
   ToggleLeft,
   ToggleRight,
   UserPlus,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
@@ -40,6 +45,7 @@ import UserModal, {
   CreateUserFormValues,
   EditUserFormValues,
 } from "../../components/governance/UserModal";
+import ResetPasswordModal from "../../components/governance/ResetPasswordModal";
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
@@ -52,6 +58,13 @@ export default function UsersPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
+
+  // Password reset modal and temporary credentials state
+  const [resettingUser, setResettingUser] = useState<SystemUser | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [tempPasswords, setTempPasswords] = useState<Record<string, string>>({});
+  const [revealedTempUsers, setRevealedTempUsers] = useState<Record<string, boolean>>({});
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
   // Toast feedback
   const [toast, setToast] = useState<{
@@ -232,6 +245,31 @@ export default function UsersPage() {
     }
   };
 
+  const handleOpenResetModal = (user: SystemUser) => {
+    setResettingUser(user);
+    setIsResetModalOpen(true);
+  };
+
+  const handleResetSuccess = (userId: string, temporaryPassword: string) => {
+    setTempPasswords((prev) => ({ ...prev, [userId]: temporaryPassword }));
+    showToast("success", "Temporary password generated and active sessions revoked.");
+  };
+
+  const toggleRevealTempPassword = (userId: string) => {
+    setRevealedTempUsers((prev) => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const handleCopyTempPassword = async (userId: string, pass: string) => {
+    try {
+      await navigator.clipboard.writeText(pass);
+      setCopiedUserId(userId);
+      setTimeout(() => setCopiedUserId(null), 2000);
+    } catch {
+      setCopiedUserId(userId);
+      setTimeout(() => setCopiedUserId(null), 2000);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE":
@@ -371,17 +409,17 @@ export default function UsersPage() {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-brand-600 card-interactive stagger-1">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-brand-600 card-interactive stagger-1 min-w-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Total Users
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : totalCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-brand-50 text-brand-600 border border-brand-100">
+            <div className="p-2.5 rounded-lg bg-brand-50 text-brand-600 border border-brand-100 shrink-0">
               <Users2 className="h-5 w-5" />
             </div>
           </div>
@@ -390,17 +428,17 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-emerald-600 card-interactive stagger-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-emerald-600 card-interactive stagger-2 min-w-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Active Users
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : activeCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </div>
@@ -409,17 +447,17 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-purple-600 card-interactive stagger-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-purple-600 card-interactive stagger-3 min-w-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Administrators
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 break-words">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : adminCount}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+            <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
               <Shield className="h-5 w-5" />
             </div>
           </div>
@@ -428,13 +466,13 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-slate-400 card-interactive stagger-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card border-l-4 border-l-slate-400 card-interactive stagger-4 min-w-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Inactive / Suspended
               </p>
-              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1">
+              <h3 className="font-display text-2xl font-bold text-slate-900 mt-1 break-words">
                 {isLoading ? (
                   <Skeleton className="h-7 w-12" />
                 ) : (
@@ -442,7 +480,7 @@ export default function UsersPage() {
                 )}
               </h3>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">
+            <div className="p-2.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
               <XCircle className="h-5 w-5" />
             </div>
           </div>
@@ -523,7 +561,7 @@ export default function UsersPage() {
             </div>
           ) : filteredUsers.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[900px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Name</th>
@@ -531,6 +569,7 @@ export default function UsersPage() {
                     <th className="py-3 px-3">Phone</th>
                     <th className="py-3 px-3">Role</th>
                     <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-3">Password</th>
                     <th className="py-3 px-3">Joined</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -597,6 +636,93 @@ export default function UsersPage() {
                       {/* Status */}
                       <td className="py-3.5 px-3 text-center">
                         {getStatusBadge(user.status)}
+                      </td>
+
+                      {/* Password */}
+                      <td className="py-3.5 px-3">
+                        {tempPasswords[user.id] ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/90 rounded-md px-2 py-1 max-w-[170px]">
+                              <span className="font-mono text-xs font-bold text-slate-800 tracking-wider truncate">
+                                {revealedTempUsers[user.id]
+                                  ? tempPasswords[user.id]
+                                  : "••••••••"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealTempPassword(user.id)}
+                                aria-label={
+                                  revealedTempUsers[user.id]
+                                    ? "Hide temporary password"
+                                    : "Show temporary password"
+                                }
+                                title={
+                                  revealedTempUsers[user.id]
+                                    ? "Hide temporary password"
+                                    : "Show temporary password"
+                                }
+                                className="text-amber-700 hover:text-amber-900 p-0.5 rounded transition-colors shrink-0 ml-1"
+                              >
+                                {revealedTempUsers[user.id] ? (
+                                  <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopyTempPassword(user.id, tempPasswords[user.id])
+                                }
+                                aria-label="Copy temporary password"
+                                title="Copy temporary password"
+                                className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors shrink-0"
+                              >
+                                {copiedUserId === user.id ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                                )}
+                              </button>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenResetModal(user)}
+                              className="h-7 px-1.5 text-[11px] text-slate-500 hover:text-brand-700 hover:bg-brand-50"
+                              title="Re-issue temporary password"
+                            >
+                              <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-slate-400 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-1">
+                              <span className="font-mono text-[11px] select-none tracking-widest text-slate-400">
+                                ••••••••
+                              </span>
+                              <button
+                                type="button"
+                                disabled
+                                aria-label="Cryptographic hash cannot be revealed"
+                                title="Stored as cryptographic bcrypt hash and cannot be revealed. Click Reset to issue a temporary password."
+                                className="text-slate-300 cursor-not-allowed p-0.5 rounded"
+                              >
+                                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                              </button>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenResetModal(user)}
+                              className="h-7 px-2 text-[11px] gap-1 text-slate-700 hover:text-brand-700 hover:border-brand-300 hover:bg-brand-50/50"
+                              title="Reset password and issue temporary credential"
+                            >
+                              <KeyRound className="h-3 w-3 text-brand-600" />
+                              <span>Reset</span>
+                            </Button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Joined */}
@@ -700,6 +826,17 @@ export default function UsersPage() {
         isLoading={
           createUserMutation.isPending || updateUserMutation.isPending
         }
+      />
+
+      {/* Secure Password Reset Modal */}
+      <ResetPasswordModal
+        isOpen={isResetModalOpen}
+        onClose={() => {
+          setIsResetModalOpen(false);
+          setResettingUser(null);
+        }}
+        user={resettingUser}
+        onSuccess={handleResetSuccess}
       />
     </AppLayout>
   );
