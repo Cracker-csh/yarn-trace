@@ -192,7 +192,7 @@ export default function RegisterBatchModal({
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-transparent"
@@ -205,30 +205,30 @@ export default function RegisterBatchModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20 shrink-0">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800">
+              <h2 className="text-sm sm:text-base font-bold text-slate-800">
                 Register Output Batch
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500">
                 Record finished fabric rolls or yarn products from completed production orders
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors shrink-0"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* 1. Production Order Selector */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -517,13 +517,14 @@ export default function RegisterBatchModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleClose}
               disabled={registerMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -532,7 +533,7 @@ export default function RegisterBatchModal({
               variant="primary"
               size="sm"
               disabled={registerMutation.isPending || eligibleOrders.length === 0}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               {registerMutation.isPending ? (
                 <>

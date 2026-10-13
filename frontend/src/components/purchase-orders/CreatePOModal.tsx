@@ -256,7 +256,7 @@ export default function CreatePOModal({
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-transparent"
@@ -269,7 +269,7 @@ export default function CreatePOModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 sm:px-6 py-3 sm:py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-md shadow-brand-500/20">
               <ShoppingCart className="h-5 w-5" />
@@ -292,7 +292,7 @@ export default function CreatePOModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {error && (
             <div className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 animate-in fade-in">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
@@ -434,7 +434,7 @@ export default function CreatePOModal({
 
             {/* Excel-like Tabular Grid */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[850px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                     <th className="py-2.5 px-2 text-center w-8">#</th>
@@ -643,18 +643,19 @@ export default function CreatePOModal({
           </div>
 
           {/* Footer Controls */}
-          <div className="flex items-center justify-between border-t border-slate-200 pt-4 shrink-0">
-            <div className="text-xs text-slate-500">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-200 pt-4 shrink-0">
+            <div className="text-[11px] sm:text-xs text-slate-500">
               * Required fields. 103% issue ceiling rule will be automatically
               enforced by the backend.
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 justify-end">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={onClose}
                 disabled={isLoading}
+                className="flex-1 sm:flex-initial"
               >
                 Cancel
               </Button>
@@ -663,7 +664,7 @@ export default function CreatePOModal({
                 variant="primary"
                 size="sm"
                 isLoading={isLoading}
-                className="gap-1.5"
+                className="gap-1.5 flex-1 sm:flex-initial"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>{isEditing ? "Save Changes" : "Create Purchase Order"}</span>

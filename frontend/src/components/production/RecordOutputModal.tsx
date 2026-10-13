@@ -105,36 +105,36 @@ export default function RecordOutputModal({
   if (!isOpen || !order || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200 w-screen h-screen">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         className="relative w-full max-w-xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50/80">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 shrink-0 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
               <Layers className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                 Record Finished Output: {order.orderNumber}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1">
                 Log completed fabric rolls/products and compute batch conversion yield
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+            className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -247,8 +247,8 @@ export default function RecordOutputModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200">
-            <Button variant="outline" size="sm" type="button" onClick={onClose}>
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-4 border-t border-slate-200">
+            <Button variant="outline" size="sm" type="button" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
@@ -256,7 +256,7 @@ export default function RecordOutputModal({
               size="sm"
               type="submit"
               disabled={outputMutation.isPending || newOutputNum <= 0}
-              className="gap-1.5 bg-indigo-600 hover:bg-indigo-700"
+              className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto"
             >
               {outputMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>Record Output</span>

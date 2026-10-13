@@ -273,10 +273,10 @@ function TraceabilityContent() {
 
       {/* Trace Query Search Box Card */}
       <Card className="mb-8 border-brand-200 shadow-sm card-interactive">
-        <CardContent className="p-6">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+        <CardContent className="p-4 sm:p-6">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-stretch md:items-center gap-3 sm:gap-4">
             {/* Mode Switcher */}
-            <div className="flex items-center rounded-lg border border-slate-200 p-1 bg-slate-100 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center rounded-lg border border-slate-200 p-1 bg-slate-100 shrink-0 w-full md:w-auto gap-1 sm:gap-0">
               <button
                 type="button"
                 onClick={() => {
@@ -285,7 +285,7 @@ function TraceabilityContent() {
                   setActiveQuery("");
                   setShowAutocomplete(false);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-center ${
                   traceType === "forward"
                     ? "bg-white text-brand-700 shadow-sm font-bold"
                     : "text-slate-600 hover:text-slate-900"
@@ -301,7 +301,7 @@ function TraceabilityContent() {
                   setActiveQuery("");
                   setShowAutocomplete(false);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-center ${
                   traceType === "backward"
                     ? "bg-white text-brand-700 shadow-sm font-bold"
                     : "text-slate-600 hover:text-slate-900"
@@ -312,7 +312,7 @@ function TraceabilityContent() {
             </div>
 
             {/* Search Input with Autocomplete Dropdown */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 placeholder={
@@ -326,7 +326,7 @@ function TraceabilityContent() {
                   setShowAutocomplete(true);
                 }}
                 onFocus={() => setShowAutocomplete(true)}
-                className="pl-9 h-10 font-mono text-xs sm:text-sm"
+                className="pl-9 h-10 font-mono text-xs sm:text-sm w-full"
               />
 
               {/* Autocomplete Dropdown */}
@@ -342,17 +342,17 @@ function TraceabilityContent() {
                       }
                       className="p-2.5 hover:bg-brand-50 hover:text-brand-900 cursor-pointer text-xs flex items-center justify-between transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-800">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono font-bold text-slate-800 shrink-0">
                           {traceType === "forward" ? item.lotNumber : item.productCode}
                         </span>
-                        <span className="text-slate-500">
+                        <span className="text-slate-500 truncate">
                           {traceType === "forward"
                             ? `${item.yarnCount} • ${item.supplierName}`
                             : `${item.name}`}
                         </span>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-[10px] shrink-0 ml-2">
                         {traceType === "forward"
                           ? `${item.currentWeightKg?.toFixed(2)} KG`
                           : `${item.totalQuantityKg?.toFixed(2)} KG`}
@@ -363,7 +363,7 @@ function TraceabilityContent() {
               )}
             </div>
 
-            <Button type="submit" variant="primary" className="gap-2 shrink-0 h-10 shadow-sm">
+            <Button type="submit" variant="primary" className="gap-2 shrink-0 h-10 shadow-sm w-full md:w-auto">
               <Network className="h-4 w-4" />
               <span>Trace Genealogy</span>
             </Button>
@@ -471,15 +471,15 @@ function TraceabilityContent() {
         <div className="space-y-8">
           {/* 1. Lot KPI Header Card */}
           <Card className="border-brand-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-brand-500/20">
-                    <Boxes className="h-7 w-7" />
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6 text-white">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-brand-500/20 shrink-0">
+                    <Boxes className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-display text-2xl font-bold font-mono tracking-tight text-white">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <h3 className="font-display text-xl sm:text-2xl font-bold font-mono tracking-tight text-white break-all">
                         {traceResult.root.lotNumber}
                       </h3>
                       <Badge
@@ -518,21 +518,21 @@ function TraceabilityContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 text-right">
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-left sm:text-right w-full sm:w-auto">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex-1 sm:flex-initial min-w-[120px]">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       Initial Inward
                     </p>
-                    <p className="font-display text-lg font-bold font-mono text-white">
+                    <p className="font-display text-base sm:text-lg font-bold font-mono text-white">
                       {traceResult.summary.sourceKg.toFixed(2)} KG
                     </p>
                     <p className="text-[10px] text-slate-400">{traceResult.root.initialBags} bags</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30">
+                  <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30 flex-1 sm:flex-initial min-w-[120px]">
                     <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-wider">
                       Main Warehouse Stock
                     </p>
-                    <p className="font-display text-lg font-bold font-mono text-brand-400">
+                    <p className="font-display text-base sm:text-lg font-bold font-mono text-brand-400">
                       {traceResult.summary.currentMainStockKg.toFixed(2)} KG
                     </p>
                     <p className="text-[10px] text-brand-300">{traceResult.summary.currentMainStockBags} bags</p>
@@ -543,10 +543,10 @@ function TraceabilityContent() {
 
             {/* Parent & Child Lot Lineage Banner (if applicable) */}
             {traceResult.parentLot && (
-              <div className="p-3 bg-purple-50 border-t border-b border-purple-200 flex items-center justify-between text-xs text-purple-900 px-6">
+              <div className="p-3 bg-purple-50 border-t border-b border-purple-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-purple-900 px-4 sm:px-6">
                 <div className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 text-purple-600" />
-                  <span>
+                  <GitBranch className="h-4 w-4 text-purple-600 shrink-0" />
+                  <span className="break-words">
                     Transformed from Parent Raw Lot:{" "}
                     <strong className="font-mono">{traceResult.parentLot.lotNumber}</strong> (
                     {traceResult.parentLot.yarnCount}) — Supplier:{" "}
@@ -557,7 +557,7 @@ function TraceabilityContent() {
                   size="sm"
                   variant="outline"
                   onClick={() => handleSelectPill(traceResult.parentLot!.lotNumber)}
-                  className="h-7 text-xs bg-white text-purple-700 hover:bg-purple-100 border-purple-300"
+                  className="h-7 text-xs bg-white text-purple-700 hover:bg-purple-100 border-purple-300 shrink-0"
                 >
                   Trace Parent Lot
                 </Button>
@@ -565,7 +565,7 @@ function TraceabilityContent() {
             )}
 
             {/* 2. Real Quantity Reconciliation Metric Grid */}
-            <CardContent className="p-6 bg-slate-50/50">
+            <CardContent className="p-4 sm:p-6 bg-slate-50/50">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-brand-600" />
@@ -579,33 +579,33 @@ function TraceabilityContent() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-                <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase">1. Inward Source</p>
-                  <p className="text-sm font-bold font-mono text-slate-900 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-slate-900 mt-1 break-words">
                     {traceResult.summary.sourceKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-slate-400">Initial received</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-amber-700 uppercase">2. Issued to Floor</p>
-                  <p className="text-sm font-bold font-mono text-amber-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-amber-800 mt-1 break-words">
                     {traceResult.summary.issuedKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-amber-600">Issued slips</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-sky-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-sky-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-sky-700 uppercase">3. Allocated</p>
-                  <p className="text-sm font-bold font-mono text-sky-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-sky-800 mt-1 break-words">
                     {traceResult.summary.allocatedKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-sky-600">Work orders</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-emerald-700 uppercase">4. Consumed</p>
-                  <p className="text-sm font-bold font-mono text-emerald-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-emerald-800 mt-1 break-words">
                     {traceResult.summary.consumedKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-emerald-600">
@@ -613,25 +613,25 @@ function TraceabilityContent() {
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-blue-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-blue-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-blue-700 uppercase">5. Floor Returns</p>
-                  <p className="text-sm font-bold font-mono text-blue-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-blue-800 mt-1 break-words">
                     {traceResult.summary.productionReturnedKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-blue-600">Returned to main</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-purple-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-purple-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-purple-700 uppercase">6. Floor Balance</p>
-                  <p className="text-sm font-bold font-mono text-purple-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-purple-800 mt-1 break-words">
                     {traceResult.summary.currentTeamStockKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-purple-600">With floor teams</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-teal-200 shadow-sm">
+                <div className="p-3 rounded-xl bg-white border border-teal-200 shadow-sm min-w-0">
                   <p className="text-[10px] font-semibold text-teal-700 uppercase">7. Total Output</p>
-                  <p className="text-sm font-bold font-mono text-teal-800 mt-1">
+                  <p className="text-xs sm:text-sm font-bold font-mono text-teal-800 mt-1 break-words">
                     {traceResult.summary.totalOutputKg.toFixed(2)} KG
                   </p>
                   <p className="text-[10px] text-teal-600">Finished goods</p>
@@ -644,19 +644,19 @@ function TraceabilityContent() {
           {traceResult.workOrders.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <CardTitle>Connected Production Orders</CardTitle>
                     <CardDescription>
                       Work orders consuming raw yarn from Lot {traceResult.root.lotNumber}
                     </CardDescription>
                   </div>
-                  <Badge variant="secondary">{traceResult.workOrders.length} Work Orders</Badge>
+                  <Badge variant="secondary" className="w-fit">{traceResult.workOrders.length} Work Orders</Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full min-w-[850px] text-xs text-left">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                       <tr>
                         <th className="py-3 px-4">Work Order</th>
@@ -904,15 +904,15 @@ function TraceabilityContent() {
         <div className="space-y-8">
           {/* 1. Finished Product Header Card */}
           <Card className="border-indigo-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-indigo-500/20">
-                    <Layers className="h-7 w-7" />
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 text-white">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-4 ring-indigo-500/20 shrink-0">
+                    <Layers className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-display text-2xl font-bold font-mono tracking-tight text-white">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <h3 className="font-display text-xl sm:text-2xl font-bold font-mono tracking-tight text-white break-all">
                         {traceResult.root.productCode}
                       </h3>
                       <Badge
@@ -944,20 +944,20 @@ function TraceabilityContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 text-right">
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-left sm:text-right w-full sm:w-auto">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex-1 sm:flex-initial min-w-[120px]">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       Total Output Quantity
                     </p>
-                    <p className="font-display text-lg font-bold font-mono text-white">
+                    <p className="font-display text-base sm:text-lg font-bold font-mono text-white">
                       {traceResult.summary.totalOutputKg.toFixed(2)} KG
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+                  <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex-1 sm:flex-initial min-w-[120px]">
                     <p className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider">
                       Batch Yield
                     </p>
-                    <p className="font-display text-lg font-bold font-mono text-indigo-300">
+                    <p className="font-display text-base sm:text-lg font-bold font-mono text-indigo-300">
                       {traceResult.summary.yieldPercentage}%
                     </p>
                   </div>
@@ -966,8 +966,8 @@ function TraceabilityContent() {
             </div>
 
             {/* Consumed Raw Yarn Summary Grid */}
-            <CardContent className="p-6 bg-slate-50/50">
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="p-4 sm:p-6 bg-slate-50/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <Boxes className="h-4 w-4 text-indigo-600" />
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">

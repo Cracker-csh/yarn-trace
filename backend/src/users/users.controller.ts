@@ -17,6 +17,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/decorators/permissions.decorator';
@@ -108,6 +109,23 @@ export class UsersController {
     const data = await this.usersService.updateStatus(id, status, adminUserId);
     return {
       message: 'User status updated successfully',
+      data,
+    };
+  }
+
+  @Post(':id/reset-password')
+  @RequirePermission('manage_users')
+  @ApiOperation({ summary: 'Reset a user password and issue a temporary credential (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Temporary password issued successfully' })
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const adminUserId = req.user?.id;
+    const data = await this.usersService.resetPassword(id, dto, adminUserId);
+    return {
+      message: data.message,
       data,
     };
   }

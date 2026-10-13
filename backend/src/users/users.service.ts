@@ -8,8 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { HashUtil } from '../common/utils/hash.util';
 import { UserStatus } from '@prisma/client';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class UsersService {
@@ -218,4 +220,74 @@ export class UsersService {
 
     return user;
   }
+
+  async resetPassword(
+    id: string,
+    dto: ResetPasswordDto,
+    adminUserId?: string,
+  ) {
+    const existing = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
+    }
+
+    // Determine temporary password
+    const temporaryPassword =
+      dto.temporaryPassword?.trim() ||
+      this.generateSecureTemporaryPassword();
+
+    // Hash the temporary password using HashUtil (bcrypt)
+    const passwordHash = await HashUtil.hash(temporaryPassword);
+
+    // Update user's passwordHash and revoke refresh token sessions
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        refreshTokenHash: null,
+      },
+    });
+
+    // Record audit log entry without exposing plaintext credentials or password hashes
+    await this.auditService.log({
+      userId: adminUserId,
+      action: 'USER_PASSWORD_RESET',
+      module: 'GOVERNANCE',
+      entityType: 'User',
+      entityId: existing.id,
+      metadata: {
+        targetUserEmail: existing.email,
+        reason: dto.reason?.trim() || 'Admin initiated temporary password reset',
+        sessionsRevoked: true,
+      },
+    });
+
+    return {
+      userId: existing.id,
+      email: existing.email,
+      temporaryPassword,
+      message: 'Temporary password generated successfully. Please provide this temporary credential to the user.',
+    };
+  }
+
+  private generateSecureTemporaryPassword(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    const randomBytes = crypto.randomBytes(9);
+    let result = 'YT#';
+    for (let i = 0; i < randomBytes.length; i++) {
+      result += chars[randomBytes[i] % chars.length];
+    }
+    return result;
+  }
 }
+

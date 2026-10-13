@@ -259,42 +259,42 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[92vh] overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white">
+      <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[92vh] overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white w-full">
         {/* Scrollable / Printable Section */}
         <div
           id="yarn-slip-printable"
           className="flex-1 overflow-y-auto bg-white text-slate-900 font-sans"
         >
           {/* Header Banner */}
-          <div className={`${theme.headerBg} p-5 border-b border-slate-200`}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 border border-white/30 text-white shrink-0 shadow-sm">
-                  <Layers className="h-6 w-6" />
+          <div className={`${theme.headerBg} p-3.5 sm:p-5 border-b border-slate-200`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/20 border border-white/30 text-white shrink-0 shadow-sm">
+                  <Layers className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-xl font-bold tracking-tight text-white">
+                    <h2 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white">
                       Yarn<span className="text-orange-300">Trace</span>
                     </h2>
                     <span className="rounded bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white border border-white/30">
                       Official Voucher
                     </span>
                   </div>
-                  <p className="text-xs text-white/90 mt-0.5 flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-white/80" />
-                    <span>Spinning Mill & Floor Tracking • Movement Pass</span>
+                  <p className="text-[11px] sm:text-xs text-white/90 mt-0.5 flex items-center gap-1.5 truncate">
+                    <Building2 className="h-3.5 w-3.5 text-white/80 shrink-0" />
+                    <span className="truncate">Spinning Mill & Floor Tracking • Movement Pass</span>
                   </p>
                 </div>
               </div>
 
               {/* QR / Verification Stamp */}
-              <div className="flex flex-col items-end shrink-0">
+              <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
                 <div className="flex items-center gap-1.5 bg-white/20 px-2.5 py-1 rounded-lg border border-white/30 text-[11px] font-mono font-bold text-white shadow-sm">
                   <QrCode className="h-3.5 w-3.5 text-white" />
                   <span>VERIFIED</span>
                 </div>
-                <span className="text-[10px] text-white/80 font-mono mt-1">
+                <span className="text-[10px] text-white/80 font-mono sm:mt-1">
                   Plant 04 • Gate Pass
                 </span>
               </div>
@@ -435,7 +435,7 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
             )}
 
             {/* Formal Authorized Signatures */}
-            <div className="grid grid-cols-2 gap-8 pt-6 border-t-2 border-slate-200 text-center text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 pt-4 sm:pt-6 border-t-2 border-slate-200 text-center text-xs">
               <div className="space-y-1">
                 <div className="border-t border-dashed border-slate-500 pt-2">
                   <p className="font-bold text-slate-900">
@@ -460,7 +460,7 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
             </div>
 
             {/* Micro Footer Notice */}
-            <div className="pt-2 text-center text-[10px] text-slate-400 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-2 text-center text-[10px] text-slate-400 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-1">
               <span>YarnTrace Inventory Platform • Plant 04</span>
               <span className="font-mono">
                 Doc ID: {transaction.id.slice(0, 8).toUpperCase()}
@@ -470,12 +470,12 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
         </div>
 
         {/* Sticky Action Footer (Hidden on Paper Print) */}
-        <div className="shrink-0 flex items-center justify-between p-3.5 bg-slate-50 border-t border-slate-200 print:hidden z-20">
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-3 sm:p-3.5 bg-slate-50 border-t border-slate-200 print:hidden z-20">
           <Button
             variant="outline"
             size="sm"
             onClick={handleCopy}
-            className="gap-1.5 text-xs text-slate-600 h-8"
+            className="gap-1.5 text-xs text-slate-600 h-8 flex-1 sm:flex-none"
           >
             {isCopied ? (
               <>
@@ -490,8 +490,8 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
             )}
           </Button>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">
+          <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end">
+            <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs flex-1 sm:flex-none">
               <X className="h-3.5 w-3.5 mr-1" />
               <span>Close</span>
             </Button>
@@ -499,7 +499,7 @@ Issued By:    ${transaction.createdBy || "Authorized Officer"}
               variant="primary"
               size="sm"
               onClick={handlePrint}
-              className="gap-1.5 h-8 text-xs shadow-sm"
+              className="gap-1.5 h-8 text-xs shadow-sm flex-1 sm:flex-none"
             >
               <Printer className="h-3.5 w-3.5" />
               <span>Print Slip</span>

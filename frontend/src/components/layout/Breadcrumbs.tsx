@@ -12,10 +12,10 @@ export default function Breadcrumbs() {
   if (segments.length === 0) return null;
 
   return (
-    <nav className="flex items-center space-x-1.5 text-xs text-slate-500">
+    <nav className="flex items-center space-x-1.5 text-xs text-slate-500 min-w-0">
       <Link
         href="/dashboard"
-        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+        className="flex items-center gap-1 hover:text-slate-900 transition-colors shrink-0"
       >
         <Home className="h-3.5 w-3.5 text-slate-400" />
       </Link>
@@ -29,13 +29,13 @@ export default function Breadcrumbs() {
 
         return (
           <React.Fragment key={href}>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
             {isLast ? (
-              <span className="font-semibold text-slate-800">{title}</span>
+              <span className="font-semibold text-slate-800 truncate max-w-[100px] sm:max-w-none">{title}</span>
             ) : (
               <Link
                 href={href}
-                className="hover:text-slate-900 transition-colors"
+                className="hover:text-slate-900 transition-colors truncate max-w-[80px] sm:max-w-none"
               >
                 {title}
               </Link>

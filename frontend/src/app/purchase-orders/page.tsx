@@ -348,7 +348,7 @@ export default function PurchaseOrdersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none"
+                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none flex-1 sm:flex-none"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="ACTIVE">Active</option>
@@ -362,7 +362,7 @@ export default function PurchaseOrdersPage() {
               <select
                 value={fulfillmentFilter}
                 onChange={(e) => setFulfillmentFilter(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none"
+                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none flex-1 sm:flex-none"
               >
                 <option value="ALL">All Progress</option>
                 <option value="PENDING">Pending (0% Issued)</option>
@@ -374,7 +374,7 @@ export default function PurchaseOrdersPage() {
               <select
                 value={partyFilter}
                 onChange={(e) => setPartyFilter(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none max-w-[150px] truncate"
+                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 focus:bg-white focus:border-brand-600 focus:outline-none flex-1 sm:flex-none max-w-full sm:max-w-[150px] truncate"
               >
                 <option value="ALL">All Parties</option>
                 {parties.map((p) => (
@@ -414,18 +414,18 @@ export default function PurchaseOrdersPage() {
               <Skeleton className="h-12 w-full" />
             </div>
           ) : isError ? (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span>
                 Failed to load purchase orders:{" "}
                 {error instanceof Error ? error.message : "Server error"}
               </span>
-              <Button size="sm" variant="outline" onClick={() => refetch()}>
+              <Button size="sm" variant="outline" onClick={() => refetch()} className="self-start sm:self-auto">
                 Retry
               </Button>
             </div>
           ) : purchaseOrders.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-xs text-left">
+              <table className="w-full min-w-[1000px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-3.5">PO Number</th>
