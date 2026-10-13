@@ -107,10 +107,6 @@ export class RolesService {
       throw new NotFoundException(`Role with ID "${id}" not found`);
     }
 
-    if (existing.isSystem) {
-      throw new ForbiddenException('System roles cannot be modified');
-    }
-
     // Check name uniqueness if changing
     if (dto.name && dto.name !== existing.name) {
       const nameConflict = await this.prisma.role.findUnique({
@@ -179,8 +175,8 @@ export class RolesService {
       throw new NotFoundException(`Role with ID "${id}" not found`);
     }
 
-    if (existing.isSystem) {
-      throw new ForbiddenException('System roles cannot be deleted');
+    if (existing.code === 'ADMIN') {
+      throw new ForbiddenException('The primary Administrator (ADMIN) role cannot be deleted');
     }
 
     if (existing._count.users > 0) {

@@ -368,9 +368,8 @@ export default function RolesPermissionsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenEditRole(role)}
-                          disabled={role.isSystem}
-                          className="h-8 px-2.5 text-xs gap-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
-                          title={role.isSystem ? "System roles cannot be edited" : "Edit Role"}
+                          className="h-8 px-2.5 text-xs gap-1 text-slate-500 hover:text-slate-900"
+                          title="Edit Role"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -379,9 +378,13 @@ export default function RolesPermissionsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenDeleteRole(role)}
-                          disabled={role.isSystem}
+                          disabled={role.code === "ADMIN"}
                           className="h-8 px-2 text-xs gap-1 text-slate-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-30"
-                          title={role.isSystem ? "System roles cannot be deleted" : "Delete Role"}
+                          title={
+                            role.code === "ADMIN"
+                              ? "Primary Administrator role cannot be deleted"
+                              : "Delete Role"
+                          }
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -431,7 +434,11 @@ export default function RolesPermissionsPage() {
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         title="Delete Role"
-        description={`Are you sure you want to delete the role "${roleToDelete?.name}"? This action cannot be undone.`}
+        description={
+          roleToDelete?._count?.users && roleToDelete._count.users > 0
+            ? `Cannot delete "${roleToDelete?.name}" directly because ${roleToDelete._count.users} user(s) are currently assigned to it. Please reassign those users to another role first.`
+            : `Are you sure you want to delete the role "${roleToDelete?.name}"? This action cannot be undone.`
+        }
         confirmLabel="Delete Role"
         variant="destructive"
         onConfirm={handleDeleteConfirm}
