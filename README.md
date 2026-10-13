@@ -332,10 +332,6 @@ npx prisma migrate dev --name init
 npm run prisma:seed
 ```
 
-> **Default Seed Admin Credentials:**
-> - **Email:** `admin@yarntrace.com`
-> - **Password:** `Password123!`
-
 ---
 
 ### 🏃‍♂️ 4. Launching the Services
@@ -396,31 +392,6 @@ npx tsc --noEmit
 
 # Code styling & linting
 npm run lint
-```
-
----
-
-## 📚 API Explorer (Swagger / OpenAPI)
-
-Interactive OpenAPI specification is available at **`http://localhost:4000/api/docs`** when the backend is running.
-
-```
-┌────────────────────────────────────────────────────────┐
-│  YarnTrace OpenAPI 3.0 Interactive Documentation      │
-├────────────────────────────────────────────────────────┤
-│  POST    /api/v1/auth/login        Authenticate & JWT  │
-│  GET     /api/v1/dashboard/overview Unified KPIs & Lot │
-│  GET     /api/v1/inventory/lots    Lot-wise KG ledger  │
-│  POST    /api/v1/inventory/opening Baseline stock add  │
-│  POST    /api/v1/inventory/issued  Issue yarn to floor │
-│  GET     /api/v1/production/orders Work order records  │
-│  POST    /api/v1/production/output Register batch      │
-│  GET     /api/v1/traceability/lot  Lot genealogy tree  │
-│  GET     /api/v1/roles             Role access matrix  │
-│  PATCH   /api/v1/roles/:id         Update role details │
-│  GET     /api/v1/audit-logs        Immutable audit log │
-│  GET     /api/v1/health            API liveness probe  │
-└────────────────────────────────────────────────────────┘
 ```
 
 ---
