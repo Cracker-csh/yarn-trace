@@ -12,5 +12,6 @@ export default () => ({
   },
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    allowTunnelOrigins: process.env.ALLOW_TUNNEL_ORIGINS !== 'false',
   },
 });

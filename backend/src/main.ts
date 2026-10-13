@@ -15,7 +15,28 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('port') || 4000;
-  const corsOrigin = configService.get<string>('cors.origin') || 'http://localhost:3000';
+  // CORS Configuration
+  const rawCorsOrigin = configService.get<string>('cors.origin') || 'http://localhost:3000';
+  const allowTunnelOrigins = configService.get<boolean>('cors.allowTunnelOrigins') ?? true;
+
+  // Parse comma-separated origins from environment variable
+  const configuredOrigins = rawCorsOrigin
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
+  // Default local development origins
+  const defaultAllowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:4000',
+    'http://127.0.0.1:4000',
+  ];
+
+  // Regex patterns for development preview tunnels (Cloudflare, LocalTunnel, ngrok)
+  const tunnelOriginRegex = /^https:\/\/[a-zA-Z0-9-]+\.(trycloudflare\.com|loca\.lt|ngrok-free\.app|ngrok\.io)$/;
 
   // Security Headers
   app.use(
@@ -24,12 +45,49 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // Enable CORS with dynamic origin resolution & credentials support
   app.enableCors({
-    origin: corsOrigin === '*' ? true : [corsOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, Postman, server-to-server)
+      if (!requestOrigin) {
+        return callback(null, true);
+      }
+
+      const normalizedOrigin = requestOrigin.replace(/\/+$/, '');
+
+      // 1. Check explicitly configured origins from CORS_ORIGIN
+      if (configuredOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // 2. Check default local development origins
+      if (defaultAllowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // 3. Check preview tunnel patterns (including *.trycloudflare.com) if enabled
+      if (allowTunnelOrigins && tunnelOriginRegex.test(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      logger.warn(`CORS blocked request from origin: ${requestOrigin}`);
+      return callback(null, false);
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+      'Bypass-Tunnel-Reminder',
+      'bypass-tunnel-reminder',
+    ],
+    exposedHeaders: ['Authorization'],
+    maxAge: 86400,
   });
 
   // Global API Prefix: /api/v1
