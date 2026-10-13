@@ -37,6 +37,7 @@ import {
   CardContent,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { useAppSelector } from "../../store/hooks";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
 import { DashboardOverview } from "../../types/dashboard";
@@ -50,6 +51,12 @@ const IssueStockModal = dynamic(() => import("../../components/inventory/IssueSt
 export default function DashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const user = useAppSelector((state) => state.auth.user);
+
+  const canViewInventory =
+    user?.role?.code === "ADMIN" ||
+    user?.permissions?.includes("view_inventory") ||
+    user?.permissions?.includes("inventory.view");
 
   // Toast notification state
   const [toast, setToast] = useState<{
@@ -97,23 +104,25 @@ export default function DashboardPage() {
     staleTime: 60_000,
   });
 
-  // Fetch Lots for Issue Modal
+  // Fetch Lots for Issue Modal (only when issue modal is open and user is authorized)
   const { data: lots = [] } = useQuery<LotRecord[]>({
     queryKey: ["inventory", "lots"],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/lots");
       return res.data.data;
     },
+    enabled: Boolean(isIssueModalOpen && canViewInventory),
     staleTime: 30_000,
   });
 
-  // Fetch PO Requirements for Issue Modal
+  // Fetch PO Requirements for Issue Modal (only when issue modal is open and user is authorized)
   const { data: poRequirements = [] } = useQuery<PORequirementOption[]>({
     queryKey: ["inventory", "po-requirements"],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/po-requirements");
       return res.data.data;
     },
+    enabled: Boolean(isIssueModalOpen && canViewInventory),
     staleTime: 30_000,
   });
 

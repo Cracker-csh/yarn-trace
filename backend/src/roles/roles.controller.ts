@@ -81,9 +81,8 @@ export class RolesController {
 
   @Patch(':id')
   @RequirePermission('manage_roles')
-  @ApiOperation({ summary: 'Update a custom role (Admin only)' })
+  @ApiOperation({ summary: 'Update a role (Admin only)' })
   @ApiResponse({ status: 200, description: 'Role updated successfully' })
-  @ApiResponse({ status: 403, description: 'System roles cannot be modified' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateRoleDto,
@@ -99,10 +98,10 @@ export class RolesController {
 
   @Delete(':id')
   @RequirePermission('manage_roles')
-  @ApiOperation({ summary: 'Delete a custom role (Admin only, must have 0 assigned users)' })
+  @ApiOperation({ summary: 'Delete a role (Admin only, must have 0 assigned users)' })
   @ApiResponse({ status: 200, description: 'Role deleted successfully' })
   @ApiResponse({ status: 400, description: 'Role has assigned users' })
-  @ApiResponse({ status: 403, description: 'System roles cannot be deleted' })
+  @ApiResponse({ status: 403, description: 'Primary ADMIN role cannot be deleted' })
   async remove(
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,

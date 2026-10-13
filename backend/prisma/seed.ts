@@ -48,7 +48,7 @@ async function main() {
     },
   });
 
-  await prisma.role.upsert({
+  const qualityHeadRole = await prisma.role.upsert({
     where: { code: 'QUALITY_HEAD' },
     update: {},
     create: {
@@ -186,8 +186,16 @@ async function main() {
       });
     }
 
-    // Assign production permissions to PRODUCTION_HEAD
-    if (p.module === 'PRODUCTION' || p.key === 'view_traceability') {
+    // Assign production, dashboard, and inventory view permissions to PRODUCTION_HEAD
+    if (
+      p.module === 'PRODUCTION' ||
+      p.key === 'view_traceability' ||
+      p.key === 'dashboard.view' ||
+      p.key === 'view_dashboard' ||
+      p.key === 'inventory.view' ||
+      p.key === 'view_inventory' ||
+      p.key === 'view_reports'
+    ) {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
@@ -198,6 +206,31 @@ async function main() {
         update: {},
         create: {
           roleId: productionHeadRole.id,
+          permissionId: perm.id,
+        },
+      });
+    }
+
+    // Assign QA, traceability, and dashboard permissions to QUALITY_HEAD
+    if (
+      p.key === 'dashboard.view' ||
+      p.key === 'view_dashboard' ||
+      p.key === 'inventory.view' ||
+      p.key === 'view_inventory' ||
+      p.key === 'view_traceability' ||
+      p.key === 'view_reports' ||
+      p.key === 'production.view'
+    ) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: qualityHeadRole.id,
+            permissionId: perm.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: qualityHeadRole.id,
           permissionId: perm.id,
         },
       });

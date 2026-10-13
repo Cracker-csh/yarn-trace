@@ -294,7 +294,7 @@ export default function PermissionManager({
             variant="primary"
             type="button"
             onClick={handleSave}
-            disabled={isLoading || selectedIds.size === 0}
+            disabled={isLoading}
             className="h-10 px-5 text-xs font-semibold gap-1.5 shadow-sm"
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}

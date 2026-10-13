@@ -13,7 +13,16 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('overview')
-  @RequirePermission('dashboard.view', 'view_dashboard', 'inventory.view', 'view_inventory')
+  @RequirePermission(
+    'dashboard.view',
+    'view_dashboard',
+    'inventory.view',
+    'view_inventory',
+    'production.view',
+    'manage_production',
+    'view_reports',
+    'view_traceability',
+  )
   @ApiOperation({
     summary:
       'Get unified real-time dashboard overview with KPIs, live lots, and movements',
