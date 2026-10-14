@@ -33,6 +33,10 @@ export interface PORequirementComputed {
   remainingKg: number;
   fulfillmentPct: number;
   status: 'PENDING' | 'PARTIAL' | 'COMPLETED' | 'N/A' | 'CANCELLED';
+  isActive: boolean;
+  isArchived: boolean;
+  archivedAt: Date | null;
+  archivedById: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -227,6 +231,10 @@ export class PurchaseOrdersService {
           remainingKg: Number(remainingKg.toFixed(4)),
           fulfillmentPct,
           status: lineStatus,
+          isActive: req.isActive ?? true,
+          isArchived: req.isArchived ?? false,
+          archivedAt: req.archivedAt ?? null,
+          archivedById: req.archivedById ?? null,
           notes: req.notes,
           createdAt: req.createdAt,
           updatedAt: req.updatedAt,
@@ -416,6 +424,10 @@ export class PurchaseOrdersService {
         remainingKg: Number(remainingKg.toFixed(4)),
         fulfillmentPct,
         status: lineStatus,
+        isActive: req.isActive ?? true,
+        isArchived: req.isArchived ?? false,
+        archivedAt: req.archivedAt ?? null,
+        archivedById: req.archivedById ?? null,
         notes: req.notes,
         createdAt: req.createdAt,
         updatedAt: req.updatedAt,
@@ -859,6 +871,8 @@ export class PurchaseOrdersService {
         qty: dto.qty !== undefined ? new Prisma.Decimal(dto.qty) : null,
         notes: dto.notes?.trim() || null,
         status: 'PENDING',
+        isActive: true,
+        isArchived: false,
       } as any,
     });
 
@@ -895,6 +909,10 @@ export class PurchaseOrdersService {
       remainingKg: Number(createdReq.requiredKg),
       fulfillmentPct: 0,
       status: 'PENDING',
+      isActive: true,
+      isArchived: false,
+      archivedAt: null,
+      archivedById: null,
       notes: createdReq.notes,
       createdAt: createdReq.createdAt,
       updatedAt: createdReq.updatedAt,
@@ -910,6 +928,7 @@ export class PurchaseOrdersService {
     yarnCount?: string;
     purpose?: string;
     partyId?: string;
+    includeArchived?: boolean;
   } = {}): Promise<Array<{
     id: string;
     poNumber: string;
@@ -924,12 +943,20 @@ export class PurchaseOrdersService {
     remainingKg: number;
     ceiling103Kg: number;
     status: string;
+    isActive: boolean;
+    isArchived: boolean;
+    archivedAt: Date | null;
   }>> {
     const where: Prisma.PORequirementWhereInput = {
       purchaseOrder: {
         status: { not: POStatus.CANCELLED },
       },
     };
+
+    if (!filter.includeArchived) {
+      where.isArchived = false;
+      where.isActive = true;
+    }
 
     if (filter.poNumber) {
       where.OR = [
@@ -992,6 +1019,9 @@ export class PurchaseOrdersService {
         remainingKg: Number(remainingKg.toFixed(4)),
         ceiling103Kg,
         status: lineStatus,
+        isActive: req.isActive ?? true,
+        isArchived: req.isArchived ?? false,
+        archivedAt: req.archivedAt ?? null,
       };
     });
   }
@@ -1013,6 +1043,363 @@ export class PurchaseOrdersService {
         overallFulfillmentPct: po.overallFulfillmentPct,
       },
       requirements: po.requirements,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 10. ARCHIVE PO REQUIREMENT (SOFT DELETE)
+  // ---------------------------------------------------------------------------
+  async archiveRequirement(
+    id: string,
+    userId?: string,
+    reason?: string,
+  ): Promise<PORequirementComputed> {
+    const req = await this.prisma.pORequirement.findUnique({
+      where: { id },
+      include: {
+        purchaseOrder: { include: { party: true } },
+        transactions: {
+          where: { type: TransactionType.ISSUED },
+          select: {
+            id: true,
+            transactionNumber: true,
+            transactionDate: true,
+            type: true,
+            kilos: true,
+            bags: true,
+            lot: { select: { lotNumber: true } },
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { transactionDate: 'desc' },
+        },
+      },
+    });
+
+    if (!req) {
+      throw new NotFoundException(`PO Requirement with ID "${id}" not found`);
+    }
+
+    if (req.isArchived) {
+      throw new BadRequestException(
+        `PO Requirement for count "${req.yarnCount}" (${req.purpose}) is already archived.`,
+      );
+    }
+
+    const archivedAt = new Date();
+    const updated = await this.prisma.pORequirement.update({
+      where: { id },
+      data: {
+        isArchived: true,
+        isActive: false,
+        archivedAt,
+        archivedById: userId || null,
+      },
+      include: {
+        purchaseOrder: { include: { party: true } },
+        transactions: {
+          where: { type: TransactionType.ISSUED },
+          select: {
+            id: true,
+            transactionNumber: true,
+            transactionDate: true,
+            type: true,
+            kilos: true,
+            bags: true,
+            lot: { select: { lotNumber: true } },
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { transactionDate: 'desc' },
+        },
+      },
+    });
+
+    // Audit log
+    await this.prisma.auditLog.create({
+      data: {
+        userId: userId || null,
+        action: 'ARCHIVE_PO_REQUIREMENT',
+        module: 'COMMERCIAL',
+        entityType: 'PORequirement',
+        entityId: id,
+        oldValue: {
+          isArchived: req.isArchived,
+          isActive: req.isActive,
+          archivedAt: req.archivedAt,
+          archivedById: req.archivedById,
+        },
+        newValue: {
+          isArchived: true,
+          isActive: false,
+          archivedAt,
+          archivedById: userId || null,
+          reason: reason || 'Archived by user',
+        },
+        metadata: {
+          poNumber: req.poNumber || req.purchaseOrder?.poNumber,
+          yarnCount: req.yarnCount,
+          purpose: req.purpose,
+          reason: reason || null,
+        },
+      },
+    });
+
+    const isPoCancelled = req.purchaseOrder?.status === POStatus.CANCELLED;
+    const reqKg = Number(updated.requiredKg);
+    const actualIssuedFromTx = updated.transactions.reduce(
+      (acc, tx) => acc + Number(tx.kilos),
+      0,
+    );
+    const issuedKg = Math.max(actualIssuedFromTx, Number(updated.issuedKg));
+    const remainingKg = Math.max(0, reqKg - issuedKg);
+    const fulfillmentPct =
+      reqKg > 0 ? Number(((issuedKg / reqKg) * 100).toFixed(2)) : 0;
+    const lineStatus = this.computeRequirementStatus(
+      reqKg,
+      issuedKg,
+      isPoCancelled,
+    );
+
+    return {
+      id: updated.id,
+      purchaseOrderId: updated.purchaseOrderId,
+      poNumber: updated.poNumber || updated.purchaseOrder?.poNumber || null,
+      yarnCount: updated.yarnCount,
+      quality: (updated as any).quality || null,
+      size: (updated as any).size || null,
+      useFor: (updated as any).useFor || null,
+      purpose: updated.purpose,
+      pcs: (updated as any).pcs || null,
+      qty: (updated as any).qty ? Number((updated as any).qty) : null,
+      requiredKg: Number(reqKg.toFixed(4)),
+      issuedKg: Number(issuedKg.toFixed(4)),
+      remainingKg: Number(remainingKg.toFixed(4)),
+      fulfillmentPct,
+      status: lineStatus,
+      isActive: updated.isActive,
+      isArchived: updated.isArchived,
+      archivedAt: updated.archivedAt,
+      archivedById: updated.archivedById,
+      notes: updated.notes,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      transactions: updated.transactions.map((tx) => ({
+        id: tx.id,
+        transactionNumber: tx.transactionNumber,
+        transactionDate: tx.transactionDate,
+        type: tx.type,
+        kilos: Number(tx.kilos),
+        bags: tx.bags,
+        lotNumber: tx.lot?.lotNumber || null,
+        createdByName: tx.createdBy
+          ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}`
+          : null,
+      })),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 11. RESTORE PO REQUIREMENT
+  // ---------------------------------------------------------------------------
+  async restoreRequirement(
+    id: string,
+    userId?: string,
+  ): Promise<PORequirementComputed> {
+    const req = await this.prisma.pORequirement.findUnique({
+      where: { id },
+      include: {
+        purchaseOrder: { include: { party: true } },
+        transactions: {
+          where: { type: TransactionType.ISSUED },
+          select: {
+            id: true,
+            transactionNumber: true,
+            transactionDate: true,
+            type: true,
+            kilos: true,
+            bags: true,
+            lot: { select: { lotNumber: true } },
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { transactionDate: 'desc' },
+        },
+      },
+    });
+
+    if (!req) {
+      throw new NotFoundException(`PO Requirement with ID "${id}" not found`);
+    }
+
+    if (!req.isArchived) {
+      throw new BadRequestException(
+        `PO Requirement for count "${req.yarnCount}" (${req.purpose}) is not archived.`,
+      );
+    }
+
+    const updated = await this.prisma.pORequirement.update({
+      where: { id },
+      data: {
+        isArchived: false,
+        isActive: true,
+        archivedAt: null,
+        archivedById: null,
+      },
+      include: {
+        purchaseOrder: { include: { party: true } },
+        transactions: {
+          where: { type: TransactionType.ISSUED },
+          select: {
+            id: true,
+            transactionNumber: true,
+            transactionDate: true,
+            type: true,
+            kilos: true,
+            bags: true,
+            lot: { select: { lotNumber: true } },
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { transactionDate: 'desc' },
+        },
+      },
+    });
+
+    // Audit log
+    await this.prisma.auditLog.create({
+      data: {
+        userId: userId || null,
+        action: 'RESTORE_PO_REQUIREMENT',
+        module: 'COMMERCIAL',
+        entityType: 'PORequirement',
+        entityId: id,
+        oldValue: {
+          isArchived: true,
+          isActive: false,
+          archivedAt: req.archivedAt,
+          archivedById: req.archivedById,
+        },
+        newValue: {
+          isArchived: false,
+          isActive: true,
+          archivedAt: null,
+          archivedById: null,
+        },
+        metadata: {
+          poNumber: req.poNumber || req.purchaseOrder?.poNumber,
+          yarnCount: req.yarnCount,
+          purpose: req.purpose,
+        },
+      },
+    });
+
+    const isPoCancelled = req.purchaseOrder?.status === POStatus.CANCELLED;
+    const reqKg = Number(updated.requiredKg);
+    const actualIssuedFromTx = updated.transactions.reduce(
+      (acc, tx) => acc + Number(tx.kilos),
+      0,
+    );
+    const issuedKg = Math.max(actualIssuedFromTx, Number(updated.issuedKg));
+    const remainingKg = Math.max(0, reqKg - issuedKg);
+    const fulfillmentPct =
+      reqKg > 0 ? Number(((issuedKg / reqKg) * 100).toFixed(2)) : 0;
+    const lineStatus = this.computeRequirementStatus(
+      reqKg,
+      issuedKg,
+      isPoCancelled,
+    );
+
+    return {
+      id: updated.id,
+      purchaseOrderId: updated.purchaseOrderId,
+      poNumber: updated.poNumber || updated.purchaseOrder?.poNumber || null,
+      yarnCount: updated.yarnCount,
+      quality: (updated as any).quality || null,
+      size: (updated as any).size || null,
+      useFor: (updated as any).useFor || null,
+      purpose: updated.purpose,
+      pcs: (updated as any).pcs || null,
+      qty: (updated as any).qty ? Number((updated as any).qty) : null,
+      requiredKg: Number(reqKg.toFixed(4)),
+      issuedKg: Number(issuedKg.toFixed(4)),
+      remainingKg: Number(remainingKg.toFixed(4)),
+      fulfillmentPct,
+      status: lineStatus,
+      isActive: updated.isActive,
+      isArchived: updated.isArchived,
+      archivedAt: updated.archivedAt,
+      archivedById: updated.archivedById,
+      notes: updated.notes,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      transactions: updated.transactions.map((tx) => ({
+        id: tx.id,
+        transactionNumber: tx.transactionNumber,
+        transactionDate: tx.transactionDate,
+        type: tx.type,
+        kilos: Number(tx.kilos),
+        bags: tx.bags,
+        lotNumber: tx.lot?.lotNumber || null,
+        createdByName: tx.createdBy
+          ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}`
+          : null,
+      })),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 12. HARD DELETE PO REQUIREMENT (BLOCKED IF TRANSACTIONS EXIST)
+  // ---------------------------------------------------------------------------
+  async deleteRequirement(
+    id: string,
+    userId?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const req = await this.prisma.pORequirement.findUnique({
+      where: { id },
+      include: {
+        transactions: true,
+        purchaseOrder: true,
+      },
+    });
+
+    if (!req) {
+      throw new NotFoundException(`PO Requirement with ID "${id}" not found`);
+    }
+
+    const hasTransactions = req.transactions.length > 0;
+    const hasIssuedKg = Number(req.issuedKg) > 0.0001;
+
+    if (hasTransactions || hasIssuedKg) {
+      throw new BadRequestException(
+        `Cannot delete PO Requirement for count "${req.yarnCount}" (${req.purpose}) because it is referenced by ${req.transactions.length} historical stock transaction(s) with ${Number(req.issuedKg).toFixed(2)} KG issued. Archive this requirement instead to preserve historical integrity.`,
+      );
+    }
+
+    await this.prisma.pORequirement.delete({
+      where: { id },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: userId || null,
+        action: 'DELETE_PO_REQUIREMENT',
+        module: 'COMMERCIAL',
+        entityType: 'PORequirement',
+        entityId: id,
+        oldValue: {
+          poNumber: req.poNumber || req.purchaseOrder?.poNumber,
+          yarnCount: req.yarnCount,
+          purpose: req.purpose,
+          requiredKg: Number(req.requiredKg),
+        },
+        metadata: {
+          poNumber: req.poNumber || req.purchaseOrder?.poNumber,
+          yarnCount: req.yarnCount,
+          purpose: req.purpose,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: `PO Requirement for count "${req.yarnCount}" (${req.purpose}) has been deleted.`,
     };
   }
 }

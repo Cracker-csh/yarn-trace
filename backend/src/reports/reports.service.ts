@@ -288,7 +288,7 @@ export class ReportsService {
         where: { status: { in: ['DRAFT', 'CONFIRMED', 'ACTIVE', 'IN_PRODUCTION', 'PARTIALLY_DELIVERED', 'PARTIALLY_FULFILLED'] } },
       }),
       this.prisma.pORequirement.count({
-        where: { status: { not: 'COMPLETED' } },
+        where: { status: { not: 'COMPLETED' }, isArchived: false, isActive: true },
       }),
       this.prisma.productionOrder.count({
         where: { status: { in: ['PLANNED', 'IN_PROGRESS'] } },

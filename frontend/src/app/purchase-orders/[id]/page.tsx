@@ -21,6 +21,9 @@ import {
   RotateCw,
   Eye,
   Plus,
+  Archive,
+  ArchiveRestore,
+  Trash2,
 } from "lucide-react";
 import AppLayout from "../../../components/layout/AppLayout";
 import PageHeader from "../../../components/common/PageHeader";
@@ -58,6 +61,11 @@ export default function PurchaseOrderDetailPage() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedReqForIssues, setSelectedReqForIssues] =
     useState<PORequirement | null>(null);
+
+  // Archive & Filter state
+  const [reqFilter, setReqFilter] = useState<"ALL" | "ACTIVE" | "ARCHIVED">("ALL");
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
+  const [archiveReason, setArchiveReason] = useState<string>("");
 
   // Toast notification state
   const [toast, setToast] = useState<{
@@ -105,7 +113,7 @@ export default function PurchaseOrderDetailPage() {
   });
 
   // ---------------------------------------------------------------------------
-  // 3. MUTATIONS (UPDATE, CANCEL)
+  // 3. MUTATIONS (UPDATE, CANCEL, ARCHIVE, RESTORE, DELETE)
   // ---------------------------------------------------------------------------
   const updateMutation = useMutation({
     mutationFn: (values: UpdatePOInput) =>
@@ -133,6 +141,53 @@ export default function PurchaseOrderDetailPage() {
       showToast(
         "error",
         err.response?.data?.message || "Failed to cancel Purchase Order"
+      );
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: ({ reqId, reason }: { reqId: string; reason?: string }) =>
+      apiClient.patch(`/purchase-orders/requirements/${reqId}/archive`, { reason }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      showToast("success", res.data?.message || "Requirement line archived successfully!");
+      setConfirmArchiveId(null);
+      setArchiveReason("");
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to archive requirement line"
+      );
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (reqId: string) =>
+      apiClient.patch(`/purchase-orders/requirements/${reqId}/restore`),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      showToast("success", res.data?.message || "Requirement line restored successfully!");
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to restore requirement line"
+      );
+    },
+  });
+
+  const deleteReqMutation = useMutation({
+    mutationFn: (reqId: string) =>
+      apiClient.delete(`/purchase-orders/requirements/${reqId}`),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      showToast("success", res.data?.message || "Requirement line deleted successfully.");
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to delete requirement line"
       );
     },
   });
@@ -183,6 +238,15 @@ export default function PurchaseOrderDetailPage() {
 
   const isCancelled = po.status === "CANCELLED";
   const isFulfilled = po.status === "FULFILLED";
+
+  const activeReqsCount = po.requirements.filter((r) => !r.isArchived).length;
+  const archivedReqsCount = po.requirements.filter((r) => r.isArchived).length;
+
+  const displayedRequirements = po.requirements.filter((r) => {
+    if (reqFilter === "ACTIVE") return !r.isArchived;
+    if (reqFilter === "ARCHIVED") return r.isArchived;
+    return true;
+  });
 
   // Aggregate all transactions across all requirements
   const allTransactions = po.requirements.flatMap((r) =>
@@ -443,17 +507,50 @@ export default function PurchaseOrderDetailPage() {
               <CardTitle>Yarn Requirement Breakdown</CardTitle>
               <CardDescription>
                 Track individual line items by PO + Yarn Count + Purpose with
-                103% issue ceiling
+                103% issue ceiling and archive lifecycle controls
               </CardDescription>
             </div>
-            <Badge variant="brand" className="text-xs self-start sm:self-auto">
-              {po.requirements.length} Line
-              {po.requirements.length === 1 ? "" : "s"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setReqFilter("ALL")}
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    reqFilter === "ALL"
+                      ? "bg-white text-slate-900 shadow-sm font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  All ({po.requirements.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReqFilter("ACTIVE")}
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    reqFilter === "ACTIVE"
+                      ? "bg-white text-emerald-800 shadow-sm font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Active ({activeReqsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReqFilter("ARCHIVED")}
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    reqFilter === "ARCHIVED"
+                      ? "bg-white text-amber-800 shadow-sm font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Archived ({archivedReqsCount})
+                </button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[1050px] text-xs text-left">
+              <table className="w-full min-w-[1100px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-3 text-center w-10">#</th>
@@ -470,132 +567,206 @@ export default function PurchaseOrderDetailPage() {
                     <th className="py-3 px-3 text-right">103% Ceiling</th>
                     <th className="py-3 px-3 text-center">Fulfillment</th>
                     <th className="py-3 px-3 text-center">Status</th>
-                    <th className="py-3 px-3 text-center">Issues</th>
+                    <th className="py-3 px-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700 bg-white">
-                  {po.requirements.map((req, idx) => {
-                    const ceiling103 = Number((req.requiredKg * 1.03).toFixed(2));
-                    const isLineCompleted = req.status === "COMPLETED";
+                  {displayedRequirements.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="py-8 text-center text-slate-400">
+                        No {reqFilter.toLowerCase()} requirements found for this Purchase Order.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedRequirements.map((req, idx) => {
+                      const ceiling103 = Number((req.requiredKg * 1.03).toFixed(2));
+                      const isLineCompleted = req.status === "COMPLETED";
 
-                    return (
-                      <tr key={req.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-3 text-center text-slate-400 font-mono">
-                          {idx + 1}
-                        </td>
+                      return (
+                        <tr
+                          key={req.id}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            req.isArchived
+                              ? "bg-amber-50/30 text-slate-600"
+                              : ""
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-center text-slate-400 font-mono">
+                            {idx + 1}
+                          </td>
 
-                        {/* Yarn Count */}
-                        <td className="py-3 px-3 font-mono font-bold text-slate-900">
-                          {req.yarnCount}
-                        </td>
+                          {/* Yarn Count */}
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900">
+                            {req.yarnCount}
+                          </td>
 
-                        {/* Quality */}
-                        <td className="py-3 px-2 text-slate-700">
-                          {req.quality || "—"}
-                        </td>
+                          {/* Quality */}
+                          <td className="py-3 px-2 text-slate-700">
+                            {req.quality || "—"}
+                          </td>
 
-                        {/* Size */}
-                        <td className="py-3 px-2 text-slate-700 font-mono">
-                          {req.size || "—"}
-                        </td>
+                          {/* Size */}
+                          <td className="py-3 px-2 text-slate-700 font-mono">
+                            {req.size || "—"}
+                          </td>
 
-                        {/* Use For */}
-                        <td className="py-3 px-2 text-slate-700">
-                          {req.useFor || "—"}
-                        </td>
+                          {/* Use For */}
+                          <td className="py-3 px-2 text-slate-700">
+                            {req.useFor || "—"}
+                          </td>
 
-                        {/* Purpose */}
-                        <td className="py-3 px-2 text-center">
-                          <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-brand-50 text-brand-700 border border-brand-200">
-                            {req.purpose}
-                          </span>
-                        </td>
+                          {/* Purpose */}
+                          <td className="py-3 px-2 text-center">
+                            <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-brand-50 text-brand-700 border border-brand-200">
+                              {req.purpose}
+                            </span>
+                          </td>
 
-                        {/* Pcs */}
-                        <td className="py-3 px-2 text-center font-mono text-slate-600">
-                          {req.pcs ?? "—"}
-                        </td>
+                          {/* Pcs */}
+                          <td className="py-3 px-2 text-center font-mono text-slate-600">
+                            {req.pcs ?? "—"}
+                          </td>
 
-                        {/* Qty */}
-                        <td className="py-3 px-2 text-center font-mono text-slate-600">
-                          {req.qty ?? "—"}
-                        </td>
+                          {/* Qty */}
+                          <td className="py-3 px-2 text-center font-mono text-slate-600">
+                            {req.qty ?? "—"}
+                          </td>
 
-                        {/* Required KG */}
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
-                          {req.requiredKg.toFixed(2)} KG
-                        </td>
+                          {/* Required KG */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                            {req.requiredKg.toFixed(2)} KG
+                          </td>
 
-                        {/* Issued KG */}
-                        <td className="py-3 px-3 text-right font-mono font-bold text-blue-700">
-                          {req.issuedKg.toFixed(2)} KG
-                        </td>
+                          {/* Issued KG */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-blue-700">
+                            {req.issuedKg.toFixed(2)} KG
+                          </td>
 
-                        {/* Remaining KG */}
-                        <td className="py-3 px-3 text-right font-mono font-bold text-brand-700">
-                          {req.remainingKg.toFixed(2)} KG
-                        </td>
+                          {/* Remaining KG */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-brand-700">
+                            {req.remainingKg.toFixed(2)} KG
+                          </td>
 
-                        {/* 103% Ceiling */}
-                        <td className="py-3 px-3 text-right font-mono text-[11px] text-emerald-700">
-                          {ceiling103.toFixed(2)} KG
-                        </td>
+                          {/* 103% Ceiling */}
+                          <td className="py-3 px-3 text-right font-mono text-[11px] text-emerald-700">
+                            {ceiling103.toFixed(2)} KG
+                          </td>
 
-                        {/* Fulfillment */}
-                        <td className="py-3 px-3">
-                          <div className="w-20 mx-auto space-y-1">
-                            <div className="text-[10px] font-mono font-bold text-center">
-                              {req.fulfillmentPct.toFixed(1)}%
+                          {/* Fulfillment */}
+                          <td className="py-3 px-3">
+                            <div className="w-20 mx-auto space-y-1">
+                              <div className="text-[10px] font-mono font-bold text-center">
+                                {req.fulfillmentPct.toFixed(1)}%
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    isLineCompleted
+                                      ? "bg-emerald-500"
+                                      : req.issuedKg > 0
+                                      ? "bg-blue-500"
+                                      : "bg-slate-200"
+                                  }`}
+                                  style={{
+                                    width: `${Math.min(100, req.fulfillmentPct)}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
-                            <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${
-                                  isLineCompleted
-                                    ? "bg-emerald-500"
-                                    : req.issuedKg > 0
-                                    ? "bg-blue-500"
-                                    : "bg-slate-200"
-                                }`}
-                                style={{
-                                  width: `${Math.min(100, req.fulfillmentPct)}%`,
-                                }}
-                              />
+                          </td>
+
+                          {/* Status & Archived Badge */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <Badge
+                                variant={
+                                  req.status === "COMPLETED"
+                                    ? "secondary"
+                                    : req.status === "PARTIAL"
+                                    ? "brand"
+                                    : req.status === "PENDING"
+                                    ? "outline"
+                                    : "outline"
+                                }
+                                className="text-[10px] font-bold uppercase"
+                              >
+                                {req.status}
+                              </Badge>
+                              {req.isArchived && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                  <Archive className="h-2.5 w-2.5" />
+                                  <span>ARCHIVED</span>
+                                </span>
+                              )}
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Status */}
-                        <td className="py-3 px-3 text-center">
-                          <Badge
-                            variant={
-                              req.status === "COMPLETED"
-                                ? "secondary"
-                                : req.status === "PARTIAL"
-                                ? "brand"
-                                : req.status === "PENDING"
-                                ? "outline"
-                                : "outline"
-                            }
-                            className="text-[10px] font-bold uppercase"
-                          >
-                            {req.status}
-                          </Badge>
-                        </td>
+                          {/* Actions: View Issues, Archive/Restore, Delete */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReqForIssues(req)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 transition-colors"
+                                title="View Issued Transactions"
+                              >
+                                <Eye className="h-3 w-3" />
+                                <span>({req.transactions?.length || 0})</span>
+                              </button>
 
-                        {/* Issues Action */}
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            onClick={() => setSelectedReqForIssues(req)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 transition-colors"
-                            title="View Issued Transactions"
-                          >
-                            <Eye className="h-3 w-3" />
-                            <span>View ({req.transactions?.length || 0})</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              {!isCancelled && (
+                                <>
+                                  {req.isArchived ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => restoreMutation.mutate(req.id)}
+                                      disabled={restoreMutation.isPending}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                                      title="Restore requirement to active state"
+                                    >
+                                      <ArchiveRestore className="h-3 w-3" />
+                                      <span>Restore</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setConfirmArchiveId(req.id);
+                                        setArchiveReason("");
+                                      }}
+                                      disabled={archiveMutation.isPending}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200"
+                                      title="Archive requirement line (exclude from new issues)"
+                                    >
+                                      <Archive className="h-3 w-3" />
+                                      <span>Archive</span>
+                                    </button>
+                                  )}
+
+                                  {/* Delete button (only if no issued quantity) */}
+                                  {req.issuedKg <= 0.0001 && (!req.transactions || req.transactions.length === 0) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (confirm(`Delete requirement line for count "${req.yarnCount}" (${req.purpose})?`)) {
+                                          deleteReqMutation.mutate(req.id);
+                                        }
+                                      }}
+                                      disabled={deleteReqMutation.isPending}
+                                      className="inline-flex items-center p-1 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                                      title="Delete unissued requirement"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
                 <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-slate-900 text-xs">
                   <tr>
@@ -762,6 +933,69 @@ export default function PurchaseOrderDetailPage() {
         requirement={selectedReqForIssues}
         poNumber={po.poNumber}
       />
+
+      {/* Archive Requirement Modal */}
+      {confirmArchiveId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800">
+                <Archive className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Archive Requirement Line
+                </h3>
+                <p className="text-xs text-slate-500">
+                  This will exclude the requirement line from future inventory issue selectors. Historical transactions and reports will remain fully intact.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                Reason for archiving (optional):
+              </label>
+              <input
+                type="text"
+                value={archiveReason}
+                onChange={(e) => setArchiveReason(e.target.value)}
+                placeholder="e.g. Specification revised, production completed..."
+                className="w-full text-xs rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setConfirmArchiveId(null);
+                  setArchiveReason("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                disabled={archiveMutation.isPending}
+                onClick={() => {
+                  if (confirmArchiveId) {
+                    archiveMutation.mutate({
+                      reqId: confirmArchiveId,
+                      reason: archiveReason.trim() || undefined,
+                    });
+                  }
+                }}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                <span>Archive Line</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

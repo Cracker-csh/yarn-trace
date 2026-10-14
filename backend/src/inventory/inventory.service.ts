@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, TransactionType, LotStatus } from '@prisma/client';
+import { Prisma, TransactionType, LotStatus, POStatus } from '@prisma/client';
 import { AddOpeningStockDto } from './dto/add-opening-stock.dto';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { IssueStockDto } from './dto/issue-stock.dto';
@@ -332,6 +332,8 @@ export class InventoryService {
         throw new NotFoundException(`Lot "${dto.lotNumber}" not found in inventory`);
       }
 
+      lot.currentWeightKg = lot.currentWeightKg != null ? new Prisma.Decimal(lot.currentWeightKg) : new Prisma.Decimal(0);
+
       if (lot.currentWeightKg.lessThan(kgDecimal)) {
         throw new BadRequestException(
           `Insufficient stock in Lot "${lot.lotNumber}". Available: ${lot.currentWeightKg.toFixed(2)} KG, Requested: ${dto.kilos.toFixed(2)} KG. Issue rejected to prevent negative inventory balance.`,
@@ -356,6 +358,12 @@ export class InventoryService {
             where: { id: dto.poRequirementId },
             include: { purchaseOrder: true },
           });
+
+          if (poReq && (poReq.isArchived || !poReq.isActive)) {
+            throw new BadRequestException(
+              `Cannot issue yarn against archived PO requirement "${poReq.poNumber || dto.poNumber}" (${poReq.yarnCount} - ${poReq.purpose}). Please restore the requirement or select an active requirement.`,
+            );
+          }
         }
 
         if (!poReq && dto.poNumber && dto.poNumber.trim()) {
@@ -365,6 +373,8 @@ export class InventoryService {
 
           poReq = await tx.pORequirement.findFirst({
             where: {
+              isArchived: false,
+              isActive: true,
               OR: [
                 {
                   poNumber: { equals: cleanPo, mode: 'insensitive' },
@@ -1491,8 +1501,17 @@ export class InventoryService {
   // ---------------------------------------------------------------------------
   // 12. GET ACTIVE PO REQUIREMENTS (FOR AUTOCOMPLETE & 103% PO RULES)
   // ---------------------------------------------------------------------------
-  async getPoRequirements(poNumber?: string) {
-    const where: Prisma.PORequirementWhereInput = {};
+  async getPoRequirements(poNumber?: string, includeArchived: boolean = false) {
+    const where: Prisma.PORequirementWhereInput = {
+      purchaseOrder: {
+        status: { not: POStatus.CANCELLED },
+      },
+    };
+
+    if (!includeArchived) {
+      where.isArchived = false;
+      where.isActive = true;
+    }
 
     if (poNumber && poNumber.trim()) {
       where.OR = [
@@ -1529,6 +1548,8 @@ export class InventoryService {
         ceiling103Kg: ceilingKg,
         remainingEligibleKg: remainingEligibleKg,
         isCeilingReached: issuedKg >= ceilingKg,
+        isActive: r.isActive,
+        isArchived: r.isArchived,
       };
     });
   }
