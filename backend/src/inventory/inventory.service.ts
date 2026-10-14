@@ -933,7 +933,13 @@ export class InventoryService {
       throw new NotFoundException(`Original transaction "${dto.referenceTransactionId}" not found`);
     }
 
-    if (origTx.type === 'OPENING') {
+    if (origTx.type === TransactionType.CORRECTION) {
+      throw new BadRequestException(
+        'Cannot reverse or correct a CORRECTION transaction directly.',
+      );
+    }
+
+    if (origTx.type === TransactionType.OPENING) {
       throw new BadRequestException(
         'OPENING baseline transactions are immutable and cannot be corrected or reversed.',
       );
@@ -1352,6 +1358,10 @@ export class InventoryService {
           party: true,
           lot: true,
           referenceTransaction: true,
+          referencedBy: {
+            where: { type: TransactionType.CORRECTION },
+            select: { id: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -1395,6 +1405,7 @@ export class InventoryService {
           }
         : null,
       correctionReason: tx.correctionReason || null,
+      isCorrected: tx.referencedBy && tx.referencedBy.length > 0,
       notes: tx.notes || null,
       createdBy: tx.createdBy ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}` : 'System',
       createdAt: tx.createdAt,

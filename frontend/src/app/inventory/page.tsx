@@ -786,7 +786,7 @@ export default function InventoryPage() {
                             )}
 
                             {/* Reverse & Correct Transaction */}
-                            {tx.type !== "CORRECTION" && tx.type !== "OPENING" && !(tx as any).corrections?.length && (
+                            {tx.type !== "CORRECTION" && tx.type !== "OPENING" && !(tx as any).isCorrected && (
                               <Button
                                 variant="ghost"
                                 size="sm"
