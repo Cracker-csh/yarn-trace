@@ -148,6 +148,7 @@ describe('PO Requirement Archive & Soft Delete System', () => {
     lot: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     party: {
       findUnique: jest.fn(),

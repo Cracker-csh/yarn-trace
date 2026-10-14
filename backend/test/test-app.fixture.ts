@@ -646,6 +646,37 @@ export class InMemoryPrismaService {
         }
         return this.formatLotWithIncludes(lot, args.include);
       },
+      updateMany: async (args: any) => {
+        let count = 0;
+        for (const lot of this.lots) {
+          if (args.where?.id && lot.id !== args.where.id) continue;
+          if (args.where?.lotNumber && lot.lotNumber !== args.where.lotNumber) continue;
+          if (args.where?.currentWeightKg?.gte) {
+            const currentWeight = lot.currentWeightKg instanceof Prisma.Decimal ? lot.currentWeightKg : new Prisma.Decimal(lot.currentWeightKg || 0);
+            const minKg = new Prisma.Decimal(args.where.currentWeightKg.gte);
+            if (currentWeight.lessThan(minKg)) continue;
+          }
+          if (args.where?.currentBags?.gte && lot.currentBags < args.where.currentBags.gte) continue;
+
+          for (const k of Object.keys(args.data)) {
+            if (args.data[k] && typeof args.data[k] === 'object' && 'decrement' in args.data[k]) {
+              const dec = new Prisma.Decimal(args.data[k].decrement);
+              if (k === 'currentWeightKg') {
+                const currentWeight = lot.currentWeightKg instanceof Prisma.Decimal ? lot.currentWeightKg : new Prisma.Decimal(lot.currentWeightKg || 0);
+                lot.currentWeightKg = Prisma.Decimal.sub(currentWeight, dec);
+              } else if (k === 'currentBags') {
+                lot.currentBags -= Number(dec);
+              }
+            } else if (k === 'currentWeightKg' || k === 'initialWeightKg') {
+              lot[k] = new Prisma.Decimal(args.data[k]);
+            } else {
+              lot[k] = args.data[k];
+            }
+          }
+          count++;
+        }
+        return { count };
+      },
       delete: async (args: any) => {
         const idx = this.lots.findIndex((x) => x.id === args.where.id);
         if (idx >= 0) this.lots.splice(idx, 1);
