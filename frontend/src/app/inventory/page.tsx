@@ -25,7 +25,13 @@ import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import { Button } from "../../components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { apiClient } from "../../lib/axios";
 import {
@@ -54,7 +60,9 @@ export default function InventoryPage() {
   const queryClient = useQueryClient();
 
   // Active Tab View
-  const [activeTab, setActiveTab] = useState<"lots" | "transactions" | "counts" | "parties">("lots");
+  const [activeTab, setActiveTab] = useState<"lots" | "transactions" | "counts" | "parties">(
+    "lots"
+  );
 
   // Filters state
   const [filters, setFilters] = useState<InventoryFilters>({
@@ -88,7 +96,10 @@ export default function InventoryPage() {
   const [selectedTx, setSelectedTx] = useState<TransactionRecord | null>(null);
 
   // Toast / Feedback State
-  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const showToast = (type: "success" | "error", text: string) => {
     setToastMessage({ type, text });
@@ -153,7 +164,10 @@ export default function InventoryPage() {
 
   // Derived Count-wise grouping
   const countWiseStock = useMemo(() => {
-    const map = new Map<string, { count: string; totalKg: number; totalBags: number; lotCount: number }>();
+    const map = new Map<
+      string,
+      { count: string; totalKg: number; totalBags: number; lotCount: number }
+    >();
     for (const lot of lots) {
       const c = lot.count || "1/10 KW";
       const existing = map.get(c) || { count: c, totalKg: 0, totalBags: 0, lotCount: 0 };
@@ -167,10 +181,18 @@ export default function InventoryPage() {
 
   // Derived Party-wise grouping
   const partyWiseStock = useMemo(() => {
-    const map = new Map<string, { partyName: string; totalKg: number; totalBags: number; lotCount: number }>();
+    const map = new Map<
+      string,
+      { partyName: string; totalKg: number; totalBags: number; lotCount: number }
+    >();
     for (const lot of lots) {
       const pName = lot.party?.name || "Unassigned / Internal";
-      const existing = map.get(pName) || { partyName: pName, totalKg: 0, totalBags: 0, lotCount: 0 };
+      const existing = map.get(pName) || {
+        partyName: pName,
+        totalKg: 0,
+        totalBags: 0,
+        lotCount: 0,
+      };
       existing.totalKg += lot.currentWeightKg;
       existing.totalBags += lot.currentBags;
       existing.lotCount += 1;
@@ -254,7 +276,8 @@ export default function InventoryPage() {
   });
 
   const correctionMutation = useMutation({
-    mutationFn: (values: Record<string, unknown>) => apiClient.post("/inventory/correction", values),
+    mutationFn: (values: Record<string, unknown>) =>
+      apiClient.post("/inventory/correction", values),
     onSuccess: () => {
       invalidateAll();
       showToast("success", "Transaction reversed and corrected with complete audit log!");
@@ -276,7 +299,10 @@ export default function InventoryPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `yarntrace_inventory_${new Date().toISOString().split("T")[0]}.${format}`);
+      link.setAttribute(
+        "download",
+        `yarntrace_inventory_${new Date().toISOString().split("T")[0]}.${format}`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -291,17 +317,41 @@ export default function InventoryPage() {
       case "OPENING":
         return <Badge className="bg-primary/15 text-primary border-primary/30">OPENING</Badge>;
       case "RECEIVED":
-        return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">RECEIVED</Badge>;
+        return (
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+            RECEIVED
+          </Badge>
+        );
       case "ISSUED":
-        return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30">ISSUED</Badge>;
+        return (
+          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30">
+            ISSUED
+          </Badge>
+        );
       case "RETURN":
-        return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30">RETURN</Badge>;
+        return (
+          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30">
+            RETURN
+          </Badge>
+        );
       case "RETIRED":
-        return <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30">RETIRED</Badge>;
+        return (
+          <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30">
+            RETIRED
+          </Badge>
+        );
       case "SOLD":
-        return <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30">SOLD</Badge>;
+        return (
+          <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30">
+            SOLD
+          </Badge>
+        );
       case "CORRECTION":
-        return <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30">CORRECTION</Badge>;
+        return (
+          <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30">
+            CORRECTION
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -314,10 +364,10 @@ export default function InventoryPage() {
       {/* Toast Notification */}
       {toastMessage && (
         <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-xl shadow-lg border flex items-center gap-3 transition-all ${
+          className={`fixed top-20 right-4 z-[100] p-4 rounded-xl shadow-lg border flex items-center gap-3 transition-all ${
             toastMessage.type === "success"
-              ? "bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/80 dark:border-emerald-700 dark:text-emerald-100"
-              : "bg-destructive/10 border-destructive/30 text-destructive dark:bg-destructive/20"
+              ? "bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-100"
+              : "bg-red-50 border-red-300 text-red-900 dark:bg-red-950 dark:border-red-700 dark:text-red-100"
           }`}
         >
           {toastMessage.type === "success" ? (
@@ -546,9 +596,7 @@ export default function InventoryPage() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 font-semibold text-foreground">
-                          {lot.count}
-                        </td>
+                        <td className="py-3 px-3 font-semibold text-foreground">{lot.count}</td>
                         <td className="py-3 px-3 text-muted-foreground">
                           {lot.party?.name || "—"}
                         </td>
@@ -591,7 +639,9 @@ export default function InventoryPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() =>
-                                router.push(`/traceability?lot=${encodeURIComponent(lot.lotNumber)}`)
+                                router.push(
+                                  `/traceability?lot=${encodeURIComponent(lot.lotNumber)}`
+                                )
                               }
                               className="h-7 px-2 text-[11px] text-brand-600 hover:text-brand-700 hover:bg-brand-50"
                               title="Trace Lot Genealogy"
@@ -692,11 +742,15 @@ export default function InventoryPage() {
                         <td className="py-3 px-3 text-right font-mono font-bold text-primary text-sm">
                           {tx.kilos.toFixed(2)}
                         </td>
-                        <td className="py-3 px-3 font-mono text-muted-foreground">{tx.poNumber || "—"}</td>
+                        <td className="py-3 px-3 font-mono text-muted-foreground">
+                          {tx.poNumber || "—"}
+                        </td>
                         <td className="py-3 px-3">
                           {tx.purpose ? <Badge variant="outline">{tx.purpose}</Badge> : "—"}
                         </td>
-                        <td className="py-3 px-3 text-muted-foreground text-[11px]">{tx.createdBy}</td>
+                        <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                          {tx.createdBy}
+                        </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
                             {/* Printable Yarn Slip */}
@@ -732,7 +786,7 @@ export default function InventoryPage() {
                             )}
 
                             {/* Reverse & Correct Transaction */}
-                            {tx.type !== "CORRECTION" && (
+                            {tx.type !== "CORRECTION" && tx.type !== "OPENING" && !(tx as any).corrections?.length && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -765,7 +819,9 @@ export default function InventoryPage() {
                       <th className="py-3 px-4">Yarn Count (Manual Identity)</th>
                       <th className="py-3 px-3 text-center">Associated Lots</th>
                       <th className="py-3 px-3 text-right">Total Bags</th>
-                      <th className="py-3 px-4 text-right text-primary font-bold">Total In-Stock (KG)</th>
+                      <th className="py-3 px-4 text-right text-primary font-bold">
+                        Total In-Stock (KG)
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -775,9 +831,15 @@ export default function InventoryPage() {
                         <td className="py-3 px-3 text-center">
                           <Badge variant="outline">{row.lotCount} Lots</Badge>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-semibold">{row.totalBags} Bags</td>
+                        <td className="py-3 px-3 text-right font-mono font-semibold">
+                          {row.totalBags} Bags
+                        </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-primary text-base">
-                          {row.totalKg.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG
+                          {row.totalKg.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          KG
                         </td>
                       </tr>
                     ))}
@@ -795,19 +857,29 @@ export default function InventoryPage() {
                       <th className="py-3 px-4">Party / Mill / Supplier</th>
                       <th className="py-3 px-3 text-center">Lots Supplied</th>
                       <th className="py-3 px-3 text-right">Total Bags</th>
-                      <th className="py-3 px-4 text-right text-primary font-bold">Total In-Stock (KG)</th>
+                      <th className="py-3 px-4 text-right text-primary font-bold">
+                        Total In-Stock (KG)
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {partyWiseStock.map((row) => (
                       <tr key={row.partyName} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-bold text-foreground text-sm">{row.partyName}</td>
+                        <td className="py-3 px-4 font-bold text-foreground text-sm">
+                          {row.partyName}
+                        </td>
                         <td className="py-3 px-3 text-center">
                           <Badge variant="outline">{row.lotCount} Lots</Badge>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-semibold">{row.totalBags} Bags</td>
+                        <td className="py-3 px-3 text-right font-mono font-semibold">
+                          {row.totalBags} Bags
+                        </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-primary text-base">
-                          {row.totalKg.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG
+                          {row.totalKg.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          KG
                         </td>
                       </tr>
                     ))}

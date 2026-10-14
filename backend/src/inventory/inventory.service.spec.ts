@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionType, LotStatus } from '@prisma/client';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 describe('InventoryService', () => {
@@ -39,6 +39,7 @@ describe('InventoryService', () => {
               findMany: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
             transaction: {
               findUnique: jest.fn(),
@@ -367,5 +368,54 @@ describe('InventoryService', () => {
         }),
       );
     });
-  });
 });
+
+describe('Transaction Integrity & Historical Protection', () => {
+    it('should prevent duplicate lot numbers during OPENING baseline creation', async () => {
+      (prisma.party.findUnique as jest.Mock).mockResolvedValue(mockParty);
+      
+      (prisma.lot.findUnique as jest.Mock).mockResolvedValue({ id: 'existing-lot' });
+      
+      await expect(
+        service.addOpeningStock({
+          count: '1/10 KW',
+          partyId: mockParty.id,
+          lotNumber: 'LOT-DUP-01',
+          bags: 100,
+          kilos: 5000.5,
+        })
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should block corrections on OPENING transactions', async () => {
+      // Mock an OPENING transaction
+      (prisma.transaction.findUnique as jest.Mock).mockResolvedValue({
+        id: 'tx-opn-1',
+        type: TransactionType.OPENING,
+      });
+
+      await expect(
+        service.correctTransaction({
+          referenceTransactionId: 'tx-opn-1',
+          reason: 'Trying to edit baseline',
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should block double-corrections on the same transaction', async () => {
+      // Mock a transaction that already has a correction in referencedBy
+      (prisma.transaction.findUnique as jest.Mock).mockResolvedValue({
+        id: 'tx-rcv-1',
+        type: TransactionType.RECEIVED,
+        referencedBy: [{ id: 'existing-correction', type: TransactionType.CORRECTION }],
+      });
+
+      await expect(
+        service.correctTransaction({
+          referenceTransactionId: 'tx-rcv-1',
+          reason: 'Trying to correct again',
+        })
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+  });
