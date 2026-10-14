@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -69,22 +70,98 @@ export class PurchaseOrdersController {
   @ApiQuery({ name: 'yarnCount', required: false, type: String })
   @ApiQuery({ name: 'purpose', required: false, type: String })
   @ApiQuery({ name: 'partyId', required: false, type: String })
+  @ApiQuery({ name: 'includeArchived', required: false, type: Boolean })
   async getRequirements(
     @Query('poNumber') poNumber?: string,
     @Query('yarnCount') yarnCount?: string,
     @Query('purpose') purpose?: string,
     @Query('partyId') partyId?: string,
+    @Query('includeArchived') includeArchived?: string,
   ) {
     const data = await this.purchaseOrdersService.getRequirements({
       poNumber,
       yarnCount,
       purpose,
       partyId,
+      includeArchived: includeArchived === 'true',
     });
     return {
       success: true,
       message: 'PO Requirements catalog retrieved successfully',
       data,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2B. ARCHIVE PO REQUIREMENT LINE (SOFT DELETE)
+  // ---------------------------------------------------------------------------
+  @Patch('requirements/:id/archive')
+  @RequirePermission('manage_purchase_orders', 'purchase_orders.manage_requirements', 'purchase_orders.edit')
+  @ApiOperation({
+    summary: 'Archive a PO requirement line (soft delete), excluding it from new operations',
+  })
+  @ApiParam({ name: 'id', description: 'PO Requirement UUID' })
+  async archiveRequirement(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const data = await this.purchaseOrdersService.archiveRequirement(
+      id,
+      req.user?.id,
+      body?.reason,
+    );
+    return {
+      success: true,
+      message: `Requirement for count "${data.yarnCount}" (${data.purpose}) has been archived successfully`,
+      data,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2C. RESTORE PO REQUIREMENT LINE
+  // ---------------------------------------------------------------------------
+  @Patch('requirements/:id/restore')
+  @RequirePermission('manage_purchase_orders', 'purchase_orders.manage_requirements', 'purchase_orders.edit')
+  @ApiOperation({
+    summary: 'Restore an archived PO requirement line back to active state',
+  })
+  @ApiParam({ name: 'id', description: 'PO Requirement UUID' })
+  async restoreRequirement(
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const data = await this.purchaseOrdersService.restoreRequirement(
+      id,
+      req.user?.id,
+    );
+    return {
+      success: true,
+      message: `Requirement for count "${data.yarnCount}" (${data.purpose}) has been restored successfully`,
+      data,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2D. DELETE PO REQUIREMENT LINE (BLOCKED IF HISTORICAL ISSUES EXIST)
+  // ---------------------------------------------------------------------------
+  @Delete('requirements/:id')
+  @RequirePermission('manage_purchase_orders', 'purchase_orders.manage_requirements', 'delete_records')
+  @ApiOperation({
+    summary: 'Hard delete an unissued PO requirement line (blocked if historical issues exist)',
+  })
+  @ApiParam({ name: 'id', description: 'PO Requirement UUID' })
+  async deleteRequirement(
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const result = await this.purchaseOrdersService.deleteRequirement(
+      id,
+      req.user?.id,
+    );
+    return {
+      success: true,
+      message: result.message,
     };
   }
 

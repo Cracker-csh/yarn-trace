@@ -53,6 +53,10 @@ export interface PORequirement {
   fulfillmentPct: number;
   ceiling103Kg?: number;
   status: RequirementStatus;
+  isActive?: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  archivedById?: string | null;
   notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
