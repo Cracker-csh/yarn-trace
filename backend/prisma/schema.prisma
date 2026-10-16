@@ -369,6 +369,7 @@ model Transaction {
   @@index([referenceTransactionId])
   @@index([type, transactionDate])
   @@index([lotId, type])
+  @@index([lotId, transactionDate])
   @@index([partyId, type])
   @@index([createdAt])
 }
@@ -498,6 +499,7 @@ model YarnAllocation {
   @@index([productionOrderId])
   @@index([productionTeamId])
   @@index([lotId])
+  @@index([lotId, productionOrderId])
   @@index([inventoryTransactionId])
   @@index([status])
 }
@@ -540,6 +542,7 @@ model ConsumptionRecord {
   @@index([productionOrderId])
   @@index([productionTeamId])
   @@index([lotId])
+  @@index([lotId, productionOrderId])
   @@index([yarnAllocationId])
   @@index([consumptionDate])
   @@index([isCorrected])

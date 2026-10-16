@@ -1,11 +1,56 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"
-).replace(/\/+$/, "");
+/**
+ * Dynamically resolves the API Base URL based on runtime execution context:
+ * 1. Mobile / Remote Tunnel: If running in browser and hostname is not localhost,
+ *    uses configured public HTTPS URL or same-origin '/api/v1' (via Next.js reverse proxy).
+ * 2. Laptop / Desktop Localhost: Uses direct local backend http://localhost:4000/api/v1.
+ * 3. Server-Side Rendering (SSR): Uses configured URL or localhost fallback.
+ */
+export const getApiBaseUrl = (): string => {
+  const rawEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  // If a comma-separated list was provided in .env (e.g. "http://localhost:4000/api/v1, https://saints-trademarks-prior-routines.trycloudflare.com"),
+  // sanitize and extract the valid remote HTTPS URL or first valid URL
+  let parsedEnvUrl: string | undefined = undefined;
+  if (rawEnv) {
+    const parts = rawEnv.split(",").map((p) => p.trim()).filter(Boolean);
+    const httpsPart = parts.find((p) => p.startsWith("https://"));
+    parsedEnvUrl = (httpsPart || parts[0])?.replace(/\/+$/, "");
+  }
+
+  // Running inside client-side browser:
+  if (typeof window !== "undefined") {
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    // If accessed remotely (e.g. via Cloudflare tunnel, mobile Safari/Chrome, or custom domain):
+    if (!isLocalhost) {
+      // If a dedicated public HTTPS backend URL is explicitly configured, use it
+      if (
+        parsedEnvUrl &&
+        parsedEnvUrl.startsWith("https://") &&
+        !parsedEnvUrl.includes("localhost")
+      ) {
+        return parsedEnvUrl;
+      }
+      // Otherwise, use same-origin relative path '/api/v1' (proxied by Next.js rewrites)
+      // This ensures 100% reliability without mixed-content or unreachable localhost on mobile
+      return `${window.location.origin}/api/v1`;
+    }
+  }
+
+  // Local development / SSR fallback
+  if (parsedEnvUrl && !parsedEnvUrl.includes(",")) {
+    return parsedEnvUrl;
+  }
+
+  return "http://localhost:4000/api/v1";
+};
 
 export const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: getApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,9 +74,11 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor: Attach Access Token
+// Request Interceptor: Dynamically resolve baseURL and attach Access Token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    config.baseURL = getApiBaseUrl();
+
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("yarntrace_access_token");
       if (token && config.headers) {
@@ -76,12 +123,13 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const currentBaseUrl = getApiBaseUrl();
     const refreshToken = localStorage.getItem("yarntrace_refresh_token");
 
     // 1. Try Refresh Token
     if (refreshToken) {
       try {
-        const response = await axios.post(`${BASE_URL}/auth/refresh`, {
+        const response = await axios.post(`${currentBaseUrl}/auth/refresh`, {
           refreshToken,
         });
 
@@ -107,7 +155,7 @@ apiClient.interceptors.response.use(
 
     // 2. Dev-mode automatic session recovery (seamless testing without disruptions)
     try {
-      const loginRes = await axios.post(`${BASE_URL}/auth/login`, {
+      const loginRes = await axios.post(`${currentBaseUrl}/auth/login`, {
         email: "admin@yarntrace.com",
         password: "Password123!",
       });

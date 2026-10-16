@@ -62,7 +62,22 @@ export interface TimelineNode {
 
 @Injectable()
 export class TraceabilityService {
+  private forwardCache = new Map<string, { timestamp: number; data: any }>();
+  private backwardCache = new Map<string, { timestamp: number; data: any }>();
+  private readonly CACHE_TTL_MS = 30000; // 30s TTL
+
   constructor(private readonly prisma: PrismaService) {}
+
+  public invalidateCache(key?: string) {
+    if (key) {
+      const lower = key.trim().toLowerCase();
+      this.forwardCache.delete(lower);
+      this.backwardCache.delete(lower);
+    } else {
+      this.forwardCache.clear();
+      this.backwardCache.clear();
+    }
+  }
 
   // ===========================================================================
   // 1. FORWARD TRACE (LOT -> MOVEMENTS -> TEAM -> WORK ORDER -> OUTPUT -> PARTY)
@@ -70,6 +85,12 @@ export class TraceabilityService {
 
   async traceForwardByLot(identifier: string) {
     const trimmed = identifier.trim();
+    const cacheKey = trimmed.toLowerCase();
+
+    const cached = this.forwardCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      return cached.data;
+    }
 
     // 1. Find Lot by lotNumber (case-insensitive) or internal UUID
     const lot = await this.prisma.lot.findFirst({
@@ -758,7 +779,7 @@ export class TraceabilityService {
     // Sort timeline chronologically
     timeline.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    return {
+    const result = {
       root: {
         type: 'LOT',
         id: lot.id,
@@ -822,6 +843,9 @@ export class TraceabilityService {
       deliveries: allDeliveries,
       timeline,
     };
+
+    this.forwardCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    return result;
   }
 
   // ===========================================================================
@@ -830,9 +854,14 @@ export class TraceabilityService {
 
   async traceBackwardByProduct(identifier: string) {
     const trimmed = identifier.trim();
+    const cacheKey = trimmed.toLowerCase();
 
-    // 1. First try matching Product by productCode, id, or name
-    const product = await this.prisma.product.findFirst({
+    const cached = this.backwardCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    let product: any = await this.prisma.product.findFirst({
       where: {
         OR: [
           { productCode: { equals: trimmed, mode: 'insensitive' } },
@@ -841,58 +870,59 @@ export class TraceabilityService {
         ],
       },
       include: {
-        deliveries: {
-          orderBy: { dispatchDate: 'asc' },
-          include: { party: true },
-        },
-        productionOrder: {
-          include: {
-            party: true,
-            productionTeam: true,
-            outputs: {
-              orderBy: { outputDate: 'asc' },
-              include: {
-                recordedBy: { select: { firstName: true, lastName: true } },
+          deliveries: {
+            orderBy: { dispatchDate: 'asc' },
+            include: { party: true },
+          },
+          productionOrder: {
+            include: {
+              party: true,
+              productionTeam: true,
+              outputs: {
+                orderBy: { outputDate: 'asc' },
+                include: {
+                  recordedBy: { select: { firstName: true, lastName: true } },
+                },
               },
-            },
-            consumptionRecords: {
-              where: { isCorrected: false },
-              orderBy: { consumptionDate: 'asc' },
-              include: {
-                productionTeam: true,
-                recordedBy: { select: { firstName: true, lastName: true } },
-                lot: {
-                  include: {
-                    yarn: true,
-                    supplier: true,
-                    parentLot: { include: { supplier: true } },
-                    transactions: {
-                      where: {
-                        type: { in: [TransactionType.OPENING, TransactionType.RECEIVED] },
+              consumptionRecords: {
+                where: { isCorrected: false },
+                orderBy: { consumptionDate: 'asc' },
+                include: {
+                  productionTeam: true,
+                  recordedBy: { select: { firstName: true, lastName: true } },
+                  lot: {
+                    include: {
+                      yarn: true,
+                      supplier: true,
+                      parentLot: { include: { supplier: true } },
+                      transactions: {
+                        where: {
+                          type: { in: [TransactionType.OPENING, TransactionType.RECEIVED] },
+                        },
+                        take: 1,
+                        orderBy: { transactionDate: 'asc' },
+                        include: { party: true },
                       },
-                      take: 1,
-                      orderBy: { transactionDate: 'asc' },
-                      include: { party: true },
                     },
                   },
                 },
               },
-            },
-            allocations: {
-              include: {
-                productionTeam: true,
-                inventoryTransaction: true,
-                lot: {
-                  include: {
-                    yarn: true,
-                    supplier: true,
-                    transactions: {
-                      where: {
-                        type: { in: [TransactionType.OPENING, TransactionType.RECEIVED] },
+              allocations: {
+                include: {
+                  productionTeam: true,
+                  inventoryTransaction: true,
+                  lot: {
+                    include: {
+                      yarn: true,
+                      supplier: true,
+                      transactions: {
+                        where: {
+                          type: { in: [TransactionType.OPENING, TransactionType.RECEIVED] },
+                        },
+                        take: 1,
+                        orderBy: { transactionDate: 'asc' },
+                        include: { party: true },
                       },
-                      take: 1,
-                      orderBy: { transactionDate: 'asc' },
-                      include: { party: true },
                     },
                   },
                 },
@@ -900,13 +930,12 @@ export class TraceabilityService {
             },
           },
         },
-      },
-    });
+      });
 
-    let productionOrder = product?.productionOrder || null;
+      let productionOrder: any = product?.productionOrder || null;
 
-    // 2. If Product not found, try matching ProductionOrder by orderNumber or productName
-    if (!product) {
+    if (!productionOrder) {
+      // 2. Direct jump to ProductionOrder without the redundant multi-table join on Product
       productionOrder = await this.prisma.productionOrder.findFirst({
         where: {
           OR: [
@@ -1189,7 +1218,7 @@ export class TraceabilityService {
 
     timeline.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    return {
+    const result = {
       root: {
         type: 'PRODUCT',
         id: product?.id || productionOrder?.id,
@@ -1249,6 +1278,9 @@ export class TraceabilityService {
       })),
       timeline,
     };
+
+    this.backwardCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    return result;
   }
 
   // ===========================================================================

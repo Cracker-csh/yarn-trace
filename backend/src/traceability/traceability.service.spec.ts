@@ -214,7 +214,7 @@ describe('TraceabilityService End-to-End Unit & Integration Tests', () => {
 
       // Check timeline has all steps
       expect(result.timeline.length).toBeGreaterThanOrEqual(6);
-      const types = result.timeline.map((t) => t.type);
+      const types = result.timeline.map((t: any) => t.type);
       expect(types).toContain('RECEIVED');
       expect(types).toContain('ISSUED');
       expect(types).toContain('ALLOCATED');
@@ -274,7 +274,7 @@ describe('TraceabilityService End-to-End Unit & Integration Tests', () => {
 
       expect(result.parentLot).toBeDefined();
       expect(result.parentLot?.lotNumber).toBe('LOT-1014');
-      const parentNode = result.timeline.find((t) => t.type === 'PARENT_LOT');
+      const parentNode = result.timeline.find((t: any) => t.type === 'PARENT_LOT');
       expect(parentNode).toBeDefined();
       expect(parentNode?.title).toContain('LOT-1014');
     });

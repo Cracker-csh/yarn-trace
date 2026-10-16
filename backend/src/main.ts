@@ -37,6 +37,8 @@ async function bootstrap() {
 
   // Regex patterns for development preview tunnels (Cloudflare, LocalTunnel, ngrok)
   const tunnelOriginRegex = /^https:\/\/[a-zA-Z0-9-]+\.(trycloudflare\.com|loca\.lt|ngrok-free\.app|ngrok\.io)$/;
+  // Regex pattern for private LAN development origins (e.g. mobile testing over Wi-Fi)
+  const lanOriginRegex = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
   // Security Headers
   app.use(
@@ -70,6 +72,11 @@ async function bootstrap() {
 
       // 3. Check preview tunnel patterns (including *.trycloudflare.com) if enabled
       if (allowTunnelOrigins && tunnelOriginRegex.test(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // 4. Check LAN development origins for local Wi-Fi mobile testing
+      if (lanOriginRegex.test(normalizedOrigin)) {
         return callback(null, true);
       }
 
