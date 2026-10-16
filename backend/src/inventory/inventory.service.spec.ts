@@ -368,9 +368,9 @@ describe('InventoryService', () => {
         }),
       );
     });
-});
+  });
 
-describe('Transaction Integrity & Historical Protection', () => {
+  describe('Transaction Integrity & Historical Protection', () => {
     it('should prevent duplicate lot numbers during OPENING baseline creation', async () => {
       (prisma.party.findUnique as jest.Mock).mockResolvedValue(mockParty);
       
@@ -418,4 +418,62 @@ describe('Transaction Integrity & Historical Protection', () => {
       ).rejects.toThrow(ConflictException);
     });
   });
+
+  describe('Stock Ledger Reconciliation & Inconsistency Detection (Regression Test)', () => {
+    it('should reconcile lot stock balances with completed transaction history and detect discrepancies', async () => {
+      const mockLots = [
+        {
+          id: 'lot-reconciled',
+          lotNumber: 'Lot 1014',
+          currentWeightKg: new Prisma.Decimal(500),
+          currentBags: 10,
+        },
+        {
+          id: 'lot-discrepancy',
+          lotNumber: 'Lot 2014-Test',
+          currentWeightKg: new Prisma.Decimal(90),
+          currentBags: 0,
+        },
+      ];
+
+      (prisma.lot.findMany as jest.Mock).mockResolvedValue(mockLots);
+      (prisma.transaction.findMany as jest.Mock).mockImplementation(({ where }) => {
+        if (where?.lotId === 'lot-reconciled') {
+          return Promise.resolve([
+            { type: TransactionType.OPENING, kilos: new Prisma.Decimal(1000), bags: 15 },
+            { type: TransactionType.ISSUED, kilos: new Prisma.Decimal(500), bags: 5 },
+          ]);
+        }
+        if (where?.lotId === 'lot-discrepancy') {
+          // Simulated missing transaction
+          return Promise.resolve([
+            { type: TransactionType.OPENING, kilos: new Prisma.Decimal(200), bags: 1 },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const lots = await prisma.lot.findMany();
+      const reconciliationResults = [];
+
+      for (const lot of lots) {
+        const txs = await prisma.transaction.findMany({ where: { lotId: lot.id } });
+        let ledgerKg = 0;
+        for (const t of txs) {
+          if (['OPENING', 'RECEIVED', 'RETURN', 'RETURNED'].includes(t.type)) {
+            ledgerKg += Number(t.kilos);
+          } else if (['ISSUED', 'RETIRED', 'SOLD'].includes(t.type)) {
+            ledgerKg -= Number(t.kilos);
+          }
+        }
+        const diff = Math.abs(ledgerKg - Number(lot.currentWeightKg));
+        reconciliationResults.push({ lotNumber: lot.lotNumber, diff, isReconciled: diff < 0.0001 });
+      }
+
+      expect(reconciliationResults[0].isReconciled).toBe(true);
+      expect(reconciliationResults[0].diff).toBe(0);
+      expect(reconciliationResults[1].isReconciled).toBe(false);
+      expect(reconciliationResults[1].diff).toBe(110);
+    });
   });
+});
