@@ -76,8 +76,15 @@ export class InventoryController {
   @RequirePermission('inventory.view', 'view_inventory')
   @ApiOperation({ summary: 'Get active PO yarn requirements with 103% ceiling for autocomplete and issue validation' })
   @ApiQuery({ name: 'poNumber', required: false, type: String })
-  async getPoRequirements(@Query('poNumber') poNumber?: string) {
-    const data = await this.inventoryService.getPoRequirements(poNumber);
+  @ApiQuery({ name: 'includeArchived', required: false, type: Boolean })
+  async getPoRequirements(
+    @Query('poNumber') poNumber?: string,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
+    const data = await this.inventoryService.getPoRequirements(
+      poNumber,
+      includeArchived === 'true',
+    );
     return {
       message: 'PO yarn requirements retrieved successfully',
       data,

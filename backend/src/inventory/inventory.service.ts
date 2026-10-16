@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, TransactionType, LotStatus } from '@prisma/client';
+import { Prisma, TransactionType, LotStatus, POStatus } from '@prisma/client';
 import { AddOpeningStockDto } from './dto/add-opening-stock.dto';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
 import { IssueStockDto } from './dto/issue-stock.dto';
@@ -60,7 +61,9 @@ export class InventoryService {
     }
 
     if (!party.isActive) {
-      throw new BadRequestException(`Party "${party.name}" is deactivated. Please select an active party.`);
+      throw new BadRequestException(
+        `Party "${party.name}" is deactivated. Please select an active party.`,
+      );
     }
 
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
@@ -69,48 +72,41 @@ export class InventoryService {
     return this.prisma.$transaction(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
-      // Find or create Lot
-      let lot = await tx.lot.findUnique({
+      // Find existing Lot
+      const existingLot = await tx.lot.findUnique({
         where: { lotNumber: dto.lotNumber.trim() },
       });
 
-      if (!lot) {
-        lot = await tx.lot.create({
-          data: {
-            lotNumber: dto.lotNumber.trim(),
-            yarnCount: dto.count.trim(),
-            supplierId: party.id,
-            initialBags: dto.bags,
-            initialWeightKg: kgDecimal,
-            currentBags: dto.bags,
-            currentWeightKg: kgDecimal,
-            millLotNumber: dto.millLotNumber?.trim() || null,
-            shadeCode: dto.shadeCode?.trim() || null,
-            remarks: dto.remarks?.trim() || null,
-            receivedDate: txDate,
-            status: LotStatus.APPROVED,
-          },
-        });
-      } else {
-        // Increment existing lot balance
-        lot = await tx.lot.update({
-          where: { id: lot.id },
-          data: {
-            initialBags: lot.initialBags + dto.bags,
-            initialWeightKg: Prisma.Decimal.add(lot.initialWeightKg, kgDecimal),
-            currentBags: lot.currentBags + dto.bags,
-            currentWeightKg: Prisma.Decimal.add(lot.currentWeightKg, kgDecimal),
-            yarnCount: lot.yarnCount || dto.count.trim(),
-            supplierId: lot.supplierId || party.id,
-          },
-        });
+      // Task 3: Prevent duplicate baseline lots
+      if (existingLot) {
+        throw new ConflictException(
+          `Lot ${dto.lotNumber.trim()} already exists. Opening stock baseline can only be created once per unique lot.`,
+        );
       }
+
+      // Create new lot from scratch
+      const lot = await tx.lot.create({
+        data: {
+          lotNumber: dto.lotNumber.trim(),
+          yarnCount: dto.count.trim(),
+          supplierId: party.id,
+          initialBags: dto.bags,
+          initialWeightKg: kgDecimal,
+          currentBags: dto.bags,
+          currentWeightKg: kgDecimal,
+          millLotNumber: dto.millLotNumber?.trim() || null,
+          shadeCode: dto.shadeCode?.trim() || null,
+          remarks: dto.remarks?.trim() || null,
+          receivedDate: txDate,
+          status: 'APPROVED',
+        },
+      });
 
       // Create OPENING transaction
       const transaction = await tx.transaction.create({
         data: {
           transactionNumber: this.generateTxNumber('OPN'),
-          type: TransactionType.OPENING,
+          type: 'OPENING', // Maps to TransactionType.OPENING[cite: 14]
           transactionDate: txDate,
           yarnCount: dto.count.trim(),
           partyId: party.id,
@@ -183,7 +179,9 @@ export class InventoryService {
     }
 
     if (!party.isActive) {
-      throw new BadRequestException(`Party "${party.name}" is deactivated. Please select an active party.`);
+      throw new BadRequestException(
+        `Party "${party.name}" is deactivated. Please select an active party.`,
+      );
     }
 
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
@@ -334,6 +332,8 @@ export class InventoryService {
         throw new NotFoundException(`Lot "${dto.lotNumber}" not found in inventory`);
       }
 
+      lot.currentWeightKg = lot.currentWeightKg != null ? new Prisma.Decimal(lot.currentWeightKg) : new Prisma.Decimal(0);
+
       if (lot.currentWeightKg.lessThan(kgDecimal)) {
         throw new BadRequestException(
           `Insufficient stock in Lot "${lot.lotNumber}". Available: ${lot.currentWeightKg.toFixed(2)} KG, Requested: ${dto.kilos.toFixed(2)} KG. Issue rejected to prevent negative inventory balance.`,
@@ -358,6 +358,12 @@ export class InventoryService {
             where: { id: dto.poRequirementId },
             include: { purchaseOrder: true },
           });
+
+          if (poReq && (poReq.isArchived || !poReq.isActive)) {
+            throw new BadRequestException(
+              `Cannot issue yarn against archived PO requirement "${poReq.poNumber || dto.poNumber}" (${poReq.yarnCount} - ${poReq.purpose}). Please restore the requirement or select an active requirement.`,
+            );
+          }
         }
 
         if (!poReq && dto.poNumber && dto.poNumber.trim()) {
@@ -367,6 +373,8 @@ export class InventoryService {
 
           poReq = await tx.pORequirement.findFirst({
             where: {
+              isArchived: false,
+              isActive: true,
               OR: [
                 {
                   poNumber: { equals: cleanPo, mode: 'insensitive' },
@@ -416,18 +424,34 @@ export class InventoryService {
         }
       }
 
-      // 3. Decrement Lot Balance
+      // 3. Decrement Lot Balance (Atomically to prevent concurrent negative stock)
       const newWeight = Prisma.Decimal.sub(lot.currentWeightKg, kgDecimal);
       const newBags = lot.currentBags - dto.bags;
 
-      const updatedLot = await tx.lot.update({
-        where: { id: lot.id },
+      const updatedLotCount = await tx.lot.updateMany({
+        where: {
+          id: lot.id,
+          currentWeightKg: { gte: kgDecimal },
+          currentBags: { gte: dto.bags },
+        },
         data: {
-          currentWeightKg: newWeight,
-          currentBags: newBags,
+          currentWeightKg: { decrement: kgDecimal },
+          currentBags: { decrement: dto.bags },
           status: newWeight.isZero() ? LotStatus.EXHAUSTED : LotStatus.IN_PRODUCTION,
         },
       });
+
+      if (updatedLotCount.count === 0) {
+        throw new BadRequestException(
+          `Concurrent stock update detected or insufficient balance in Lot "${lot.lotNumber}".`,
+        );
+      }
+
+      const updatedLot = {
+        lotNumber: lot.lotNumber,
+        currentWeightKg: newWeight,
+        currentBags: newBags,
+      };
 
       // 4. Create ISSUED transaction
       const transaction = await tx.transaction.create({
@@ -523,18 +547,19 @@ export class InventoryService {
     });
 
     if (!origTx) {
-      throw new NotFoundException(`Original issue transaction with ID "${dto.referenceTransactionId}" not found`);
+      throw new NotFoundException(
+        `Original issue transaction with ID "${dto.referenceTransactionId}" not found`,
+      );
     }
 
     if (origTx.type !== TransactionType.ISSUED) {
-      throw new BadRequestException(`Cannot return against transaction "${origTx.transactionNumber}" of type "${origTx.type}". Returns must reference an ISSUED transaction.`);
+      throw new BadRequestException(
+        `Cannot return against transaction "${origTx.transactionNumber}" of type "${origTx.type}". Returns must reference an ISSUED transaction.`,
+      );
     }
 
     // Calculate total already returned against this issue
-    const alreadyReturnedKg = origTx.referencedBy.reduce(
-      (acc, ret) => acc + Number(ret.kilos),
-      0,
-    );
+    const alreadyReturnedKg = origTx.referencedBy.reduce((acc, ret) => acc + Number(ret.kilos), 0);
     const origIssuedKg = Number(origTx.kilos);
     const maxReturnableKg = origIssuedKg - alreadyReturnedKg;
 
@@ -687,15 +712,25 @@ export class InventoryService {
 
       const newWeight = Prisma.Decimal.sub(lot.currentWeightKg, kgDecimal);
       const newBags = lot.currentBags - dto.bags;
-
-      await tx.lot.update({
-        where: { id: lot.id },
+      
+      const updatedLotCount = await tx.lot.updateMany({
+        where: { 
+          id: lot.id,
+          currentWeightKg: { gte: kgDecimal },
+          currentBags: { gte: dto.bags },
+        },
         data: {
-          currentWeightKg: newWeight,
-          currentBags: newBags,
+          currentWeightKg: { decrement: kgDecimal },
+          currentBags: { decrement: dto.bags },
           status: newWeight.isZero() ? LotStatus.RETIRED : lot.status,
         },
       });
+
+      if (updatedLotCount.count === 0) {
+        throw new BadRequestException(
+          `Concurrent stock update detected or insufficient balance in Lot "${lot.lotNumber}".`
+        );
+      }
 
       // Create RETIRED transaction
       const transaction = await tx.transaction.create({
@@ -804,15 +839,25 @@ export class InventoryService {
 
       const newWeight = Prisma.Decimal.sub(lot.currentWeightKg, kgDecimal);
       const newBags = lot.currentBags - dto.bags;
-
-      await tx.lot.update({
-        where: { id: lot.id },
+      
+      const updatedLotCount = await tx.lot.updateMany({
+        where: { 
+          id: lot.id,
+          currentWeightKg: { gte: kgDecimal },
+          currentBags: { gte: dto.bags },
+        },
         data: {
-          currentWeightKg: newWeight,
-          currentBags: newBags,
+          currentWeightKg: { decrement: kgDecimal },
+          currentBags: { decrement: dto.bags },
           status: newWeight.isZero() ? LotStatus.EXHAUSTED : lot.status,
         },
       });
+
+      if (updatedLotCount.count === 0) {
+        throw new BadRequestException(
+          `Concurrent stock update detected or insufficient balance in Lot "${lot.lotNumber}".`
+        );
+      }
 
       // Create SOLD transaction
       const transaction = await tx.transaction.create({
@@ -889,13 +934,32 @@ export class InventoryService {
       include: {
         lot: true,
         party: true,
+        referencedBy: {
+          where: { type: TransactionType.CORRECTION },
+        },
       },
     });
-
     if (!origTx) {
       throw new NotFoundException(`Original transaction "${dto.referenceTransactionId}" not found`);
     }
 
+    if (origTx.type === TransactionType.CORRECTION) {
+      throw new BadRequestException(
+        'Cannot reverse or correct a CORRECTION transaction directly.',
+      );
+    }
+
+    if (origTx.type === TransactionType.OPENING) {
+      throw new BadRequestException(
+        'OPENING baseline transactions are immutable and cannot be corrected or reversed.',
+      );
+    }
+
+    if (origTx.referencedBy && origTx.referencedBy.length > 0) {
+      throw new ConflictException(
+        `Transaction ${origTx.transactionNumber} has already been corrected.`,
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
@@ -1085,47 +1149,42 @@ export class InventoryService {
   // 8. GET STOCK SUMMARY (KPI METRICS) - HIGH-PERFORMANCE POSTGRESQL AGGREGATION
   // ---------------------------------------------------------------------------
   async getStockSummary() {
-    const [
-      lotAgg,
-      activeLotsCount,
-      totalParties,
-      totalTransactions,
-      recentTransactions,
-    ] = await Promise.all([
-      // Database-level sum of current lot balances
-      this.prisma.lot.aggregate({
-        _sum: {
-          currentWeightKg: true,
-          currentBags: true,
-        },
-      }),
-      // Count of lots with positive balance
-      this.prisma.lot.count({
-        where: { currentWeightKg: { gt: 0 } },
-      }),
-      // Active parties count
-      this.prisma.party.count({
-        where: { isActive: true },
-      }),
-      // Total transactions count
-      this.prisma.transaction.count(),
-      // 5 most recent transactions with selective fields
-      this.prisma.transaction.findMany({
-        take: 5,
-        orderBy: { transactionDate: 'desc' },
-        select: {
-          id: true,
-          transactionNumber: true,
-          transactionDate: true,
-          type: true,
-          yarnCount: true,
-          bags: true,
-          kilos: true,
-          lot: { select: { lotNumber: true } },
-          party: { select: { name: true } },
-        },
-      }),
-    ]);
+    const [lotAgg, activeLotsCount, totalParties, totalTransactions, recentTransactions] =
+      await Promise.all([
+        // Database-level sum of current lot balances
+        this.prisma.lot.aggregate({
+          _sum: {
+            currentWeightKg: true,
+            currentBags: true,
+          },
+        }),
+        // Count of lots with positive balance
+        this.prisma.lot.count({
+          where: { currentWeightKg: { gt: 0 } },
+        }),
+        // Active parties count
+        this.prisma.party.count({
+          where: { isActive: true },
+        }),
+        // Total transactions count
+        this.prisma.transaction.count(),
+        // 5 most recent transactions with selective fields
+        this.prisma.transaction.findMany({
+          take: 5,
+          orderBy: { transactionDate: 'desc' },
+          select: {
+            id: true,
+            transactionNumber: true,
+            transactionDate: true,
+            type: true,
+            yarnCount: true,
+            bags: true,
+            kilos: true,
+            lot: { select: { lotNumber: true } },
+            party: { select: { name: true } },
+          },
+        }),
+      ]);
 
     const totalWeightKg = Number(Number(lotAgg._sum.currentWeightKg || 0).toFixed(4));
     const totalBags = lotAgg._sum.currentBags || 0;
@@ -1178,11 +1237,14 @@ export class InventoryService {
     });
 
     const lotIds = lots.map((l) => l.id);
-    const aggregates = lotIds.length > 0 ? await this.prisma.transaction.groupBy({
-      by: ['lotId', 'type'],
-      where: { lotId: { in: lotIds } },
-      _sum: { kilos: true },
-    }) : [];
+    const aggregates =
+      lotIds.length > 0
+        ? await this.prisma.transaction.groupBy({
+            by: ['lotId', 'type'],
+            where: { lotId: { in: lotIds } },
+            _sum: { kilos: true },
+          })
+        : [];
 
     const aggMap = new Map<string, Record<string, number>>();
     for (const agg of aggregates) {
@@ -1196,7 +1258,8 @@ export class InventoryService {
 
     return lots.map((lot) => {
       const lotAgg = aggMap.get(lot.id) || {};
-      const totalInKg = (lotAgg[TransactionType.OPENING] || 0) + (lotAgg[TransactionType.RECEIVED] || 0);
+      const totalInKg =
+        (lotAgg[TransactionType.OPENING] || 0) + (lotAgg[TransactionType.RECEIVED] || 0);
       const totalIssuedKg = lotAgg[TransactionType.ISSUED] || 0;
       const totalReturnedKg = lotAgg[TransactionType.RETURN] || 0;
       const totalRetiredKg = lotAgg[TransactionType.RETIRED] || 0;
@@ -1216,7 +1279,9 @@ export class InventoryService {
               email: lot.supplier.email || null,
             }
           : null,
-        parentLot: lot.parentLot ? { id: lot.parentLot.id, lotNumber: lot.parentLot.lotNumber } : null,
+        parentLot: lot.parentLot
+          ? { id: lot.parentLot.id, lotNumber: lot.parentLot.lotNumber }
+          : null,
         initialWeightKg: Number(lot.initialWeightKg.toFixed(4)),
         initialBags: lot.initialBags,
         totalInKg: Number(totalInKg.toFixed(4)),
@@ -1303,6 +1368,10 @@ export class InventoryService {
           party: true,
           lot: true,
           referenceTransaction: true,
+          referencedBy: {
+            where: { type: TransactionType.CORRECTION },
+            select: { id: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -1346,10 +1415,9 @@ export class InventoryService {
           }
         : null,
       correctionReason: tx.correctionReason || null,
+      isCorrected: tx.referencedBy && tx.referencedBy.length > 0,
       notes: tx.notes || null,
-      createdBy: tx.createdBy
-        ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}`
-        : 'System',
+      createdBy: tx.createdBy ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}` : 'System',
       createdAt: tx.createdAt,
     }));
 
@@ -1373,16 +1441,16 @@ export class InventoryService {
 
     // Prepare Transactions Sheet
     const txRows = items.map((t) => ({
-      'Date': new Date(t.transactionDate).toISOString().split('T')[0],
+      Date: new Date(t.transactionDate).toISOString().split('T')[0],
       'Transaction No': t.transactionNumber,
-      'Type': t.type,
-      'Count': t.count,
+      Type: t.type,
+      Count: t.count,
       'Party / Supplier': t.party?.name || '—',
       'Lot No': t.lotNumber,
-      'Bags': t.bags,
-      'KG': t.kilos,
+      Bags: t.bags,
+      KG: t.kilos,
       'PO Number': t.poNumber || '—',
-      'Purpose': t.purpose || '—',
+      Purpose: t.purpose || '—',
       'Ref Number': t.referenceNumber || '—',
       'Remarks / Reason': t.notes || t.correctionReason || '—',
       'Logged By': t.createdBy,
@@ -1402,7 +1470,7 @@ export class InventoryService {
       'Total Sold KG': l.totalSoldKg,
       'Current Balance KG': l.currentWeightKg,
       'Current Bags': l.currentBags,
-      'Status': l.status,
+      Status: l.status,
     }));
 
     const workbook = XLSX.utils.book_new();
@@ -1433,8 +1501,17 @@ export class InventoryService {
   // ---------------------------------------------------------------------------
   // 12. GET ACTIVE PO REQUIREMENTS (FOR AUTOCOMPLETE & 103% PO RULES)
   // ---------------------------------------------------------------------------
-  async getPoRequirements(poNumber?: string) {
-    const where: Prisma.PORequirementWhereInput = {};
+  async getPoRequirements(poNumber?: string, includeArchived: boolean = false) {
+    const where: Prisma.PORequirementWhereInput = {
+      purchaseOrder: {
+        status: { not: POStatus.CANCELLED },
+      },
+    };
+
+    if (!includeArchived) {
+      where.isArchived = false;
+      where.isActive = true;
+    }
 
     if (poNumber && poNumber.trim()) {
       where.OR = [
@@ -1471,6 +1548,8 @@ export class InventoryService {
         ceiling103Kg: ceilingKg,
         remainingEligibleKg: remainingEligibleKg,
         isCeilingReached: issuedKg >= ceilingKg,
+        isActive: r.isActive,
+        isArchived: r.isArchived,
       };
     });
   }

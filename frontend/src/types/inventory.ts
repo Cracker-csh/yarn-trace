@@ -133,6 +133,8 @@ export interface PORequirementOption {
   ceiling103Kg: number;
   remainingEligibleKg: number;
   isCeilingReached: boolean;
+  isActive?: boolean;
+  isArchived?: boolean;
 }
 
 export interface InventoryFilters {

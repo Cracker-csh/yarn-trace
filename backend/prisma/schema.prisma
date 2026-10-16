@@ -742,6 +742,12 @@ model PORequirement {
   notes           String?
   status          String?        @default("PENDING") // PENDING, PARTIAL, COMPLETED, N/A
 
+  // Archive & Soft-delete state
+  isActive        Boolean        @default(true)
+  isArchived      Boolean        @default(false)
+  archivedAt      DateTime?
+  archivedById    String?
+
   transactions    Transaction[]  @relation("RequirementTransactions")
 
   createdAt       DateTime       @default(now())
@@ -753,6 +759,8 @@ model PORequirement {
   @@index([purpose])
   @@index([poNumber])
   @@index([status])
+  @@index([isActive])
+  @@index([isArchived])
 }
 
 model DyeingOrder {
