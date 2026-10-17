@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { ReportFilterDto } from './dto/report-filter.dto';
 import * as XLSX from 'xlsx-js-style';
 import {
@@ -14,24 +15,30 @@ import {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
 
   // ===========================================================================
   // 1. KPI SUMMARY OVERVIEW
   // ===========================================================================
   async getKpiSummary() {
-    const [
-      lotAgg,
-      rcvAgg,
-      issAgg,
-      totalLotsCount,
-      activeLocationsCount,
-      productionTeamsCount,
-      pendingOrdersCount,
-      consumptionAgg,
-      outputAgg,
-      deliveryAgg,
-    ] = await Promise.all([
+    return this.cacheService.getOrSet(
+      'reports:kpi-summary',
+      async () => {
+        const [
+          lotAgg,
+          rcvAgg,
+          issAgg,
+          totalLotsCount,
+          activeLocationsCount,
+          productionTeamsCount,
+          pendingOrdersCount,
+          consumptionAgg,
+          outputAgg,
+          deliveryAgg,
+        ] = await Promise.all([
       this.prisma.lot.aggregate({
         _sum: { currentWeightKg: true, currentBags: true },
       }),
@@ -58,21 +65,24 @@ export class ReportsService {
       }),
     ]);
 
-    return {
-      totalLotsCount,
-      activeLocationsCount,
-      productionTeamsCount,
-      pendingOrdersCount,
-      totalStockKg: Number(lotAgg._sum.currentWeightKg || 0).toFixed(4),
-      totalStockBags: lotAgg._sum.currentBags || 0,
-      receivedKg: Number(rcvAgg._sum.kilos || 0).toFixed(4),
-      issuedKg: Number(issAgg._sum.kilos || 0).toFixed(4),
-      consumedKg: Number(consumptionAgg._sum.consumedKg || 0).toFixed(4),
-      wasteKg: Number(consumptionAgg._sum.wasteKg || 0).toFixed(4),
-      finishedOutputKg: Number(outputAgg._sum.outputQuantityKg || 0).toFixed(4),
-      dispatchedKg: Number(deliveryAgg._sum.dispatchedKg || 0).toFixed(4),
-      withProductionTeamsKg: '0.0000',
-    };
+        return {
+          totalLotsCount,
+          activeLocationsCount,
+          productionTeamsCount,
+          pendingOrdersCount,
+          totalStockKg: Number(lotAgg._sum.currentWeightKg || 0).toFixed(4),
+          totalStockBags: lotAgg._sum.currentBags || 0,
+          receivedKg: Number(rcvAgg._sum.kilos || 0).toFixed(4),
+          issuedKg: Number(issAgg._sum.kilos || 0).toFixed(4),
+          consumedKg: Number(consumptionAgg._sum.consumedKg || 0).toFixed(4),
+          wasteKg: Number(consumptionAgg._sum.wasteKg || 0).toFixed(4),
+          finishedOutputKg: Number(outputAgg._sum.outputQuantityKg || 0).toFixed(4),
+          dispatchedKg: Number(deliveryAgg._sum.dispatchedKg || 0).toFixed(4),
+          withProductionTeamsKg: '0.0000',
+        };
+      },
+      30,
+    );
   }
 
   // ===========================================================================

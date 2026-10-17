@@ -16,6 +16,7 @@ import {
   CancelOutputBatchDto,
   ProductFilterDto,
 } from './dto/update-product.dto';
+import { AppCacheService } from '../common/cache/app-cache.service';
 
 export interface ConsumedYarnLotInfo {
   lotId: string;
@@ -97,7 +98,10 @@ export interface ProductsSummaryMetrics {
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // 1. HELPER: GENERATE UNIQUE OUTPUT BATCH NUMBER (OUT-YYYY-0001)
@@ -150,7 +154,11 @@ export class ProductsService {
     outputBatches: OutputBatchComputed[];
     summary: ProductsSummaryMetrics;
   }> {
-    const where: Prisma.ProductionOutputWhereInput = {};
+    const cacheKey = `products:all:${JSON.stringify(filter)}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.ProductionOutputWhereInput = {};
 
     // Search filter across Batch Number, Product Name, Product Code, Work Order, and Party
     if (filter.search && filter.search.trim()) {
@@ -387,10 +395,13 @@ export class ProductsService {
       averageYieldPct,
     };
 
-    return {
-      outputBatches: computedBatches,
-      summary,
-    };
+        return {
+          outputBatches: computedBatches,
+          summary,
+        };
+      },
+      30,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -398,8 +409,11 @@ export class ProductsService {
   // ---------------------------------------------------------------------------
   async findById(idOrBatchNumber: string): Promise<OutputBatchComputed> {
     const trimmed = idOrBatchNumber.trim();
-
-    const out = await this.prisma.productionOutput.findFirst({
+    const cacheKey = `products:detail:${trimmed.toLowerCase()}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const out = await this.prisma.productionOutput.findFirst({
       where: {
         OR: [
           { id: trimmed },
@@ -550,54 +564,64 @@ export class ProductsService {
       dispatchedKg: Number(dispatchedKg.toFixed(4)),
       availableKg: Number(availableKg.toFixed(4)),
     };
+  },
+  30,
+);
   }
 
   // ---------------------------------------------------------------------------
   // 5. GET ELIGIBLE PRODUCTION ORDERS (FOR MODAL DROPDOWN CONTEXT)
   // ---------------------------------------------------------------------------
   async getEligibleOrders() {
-    const orders = await this.prisma.productionOrder.findMany({
-      where: {
-        status: { not: 'CANCELLED' as any },
-      },
-      include: {
-        party: true,
-        productionTeam: true,
-        outputs: true,
-        consumptionRecords: { where: { isCorrected: false } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const cacheKey = 'products:eligible-orders';
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const orders = await this.prisma.productionOrder.findMany({
+          where: {
+            status: { not: 'CANCELLED' as any },
+          },
+          include: {
+            party: true,
+            productionTeam: true,
+            outputs: true,
+            consumptionRecords: { where: { isCorrected: false } },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
 
-    return orders.map((o) => {
-      const targetKg = Number(o.targetQuantity);
-      const existingOutputKg = o.outputs.reduce(
-        (sum, out) => sum + Number(out.outputQuantityKg),
-        0,
-      );
-      const consumedKg = o.consumptionRecords.reduce(
-        (sum, c) => sum + Number(c.consumedKg),
-        0,
-      );
-      const remainingPlannedKg = Math.max(0, targetKg - existingOutputKg);
+        return orders.map((o) => {
+          const targetKg = Number(o.targetQuantity);
+          const existingOutputKg = o.outputs.reduce(
+            (sum, out) => sum + Number(out.outputQuantityKg),
+            0,
+          );
+          const consumedKg = o.consumptionRecords.reduce(
+            (sum, c) => sum + Number(c.consumedKg),
+            0,
+          );
+          const remainingPlannedKg = Math.max(0, targetKg - existingOutputKg);
 
-      return {
-        id: o.id,
-        orderNumber: o.orderNumber,
-        productName: o.productName || 'Finished Goods',
-        productType: o.productType || 'FABRIC_ROLL',
-        status: o.status,
-        targetQuantity: targetKg,
-        unit: o.unit || 'KG',
-        partyName: o.party?.name || 'Internal / Stock',
-        partyId: o.partyId,
-        teamName: o.productionTeam?.name || 'Production Floor',
-        teamDepartment: o.productionTeam?.department || 'MANUFACTURING',
-        existingOutputKg: Number(existingOutputKg.toFixed(4)),
-        consumedKg: Number(consumedKg.toFixed(4)),
-        remainingPlannedKg: Number(remainingPlannedKg.toFixed(4)),
-      };
-    });
+          return {
+            id: o.id,
+            orderNumber: o.orderNumber,
+            productName: o.productName || 'Finished Goods',
+            productType: o.productType || 'FABRIC_ROLL',
+            status: o.status,
+            targetQuantity: targetKg,
+            unit: o.unit || 'KG',
+            partyName: o.party?.name || 'Internal / Stock',
+            partyId: o.partyId,
+            teamName: o.productionTeam?.name || 'Production Floor',
+            teamDepartment: o.productionTeam?.department || 'MANUFACTURING',
+            existingOutputKg: Number(existingOutputKg.toFixed(4)),
+            consumedKg: Number(consumedKg.toFixed(4)),
+            remainingPlannedKg: Number(remainingPlannedKg.toFixed(4)),
+          };
+        });
+      },
+      30,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -749,6 +773,10 @@ export class ProductsService {
       },
     });
 
+    this.cacheService.delPattern('^products:');
+    this.cacheService.delPattern('^production:');
+    this.cacheService.delPattern('^dashboard:');
+
     return this.findById(output.id);
   }
 
@@ -826,6 +854,10 @@ export class ProductsService {
       },
     });
 
+    this.cacheService.delPattern('^products:');
+    this.cacheService.delPattern('^production:');
+    this.cacheService.delPattern('^dashboard:');
+
     return this.findById(id);
   }
 
@@ -892,6 +924,10 @@ export class ProductsService {
         metadata: { batchNumber: existing.batchNumber },
       },
     });
+
+    this.cacheService.delPattern('^products:');
+    this.cacheService.delPattern('^production:');
+    this.cacheService.delPattern('^dashboard:');
 
     return this.findById(id);
   }

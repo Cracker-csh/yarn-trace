@@ -1,7 +1,7 @@
     "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Building2,
   Plus,
@@ -35,8 +35,10 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
+import dynamic from "next/dynamic";
 import { Party } from "../../types/inventory";
-import PartyModal, { PartyFormValues } from "../../components/parties/PartyModal";
+import type { PartyFormValues } from "../../components/parties/PartyModal";
+const PartyModal = dynamic(() => import("../../components/parties/PartyModal"), { ssr: false });
 
 export default function PartiesPage() {
   const queryClient = useQueryClient();
@@ -79,7 +81,8 @@ export default function PartiesPage() {
       });
       return res.data.data;
     },
-    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
   // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import {
   CancelPurchaseOrderDto,
   PurchaseOrderFilterDto,
 } from './dto/update-purchase-order.dto';
+import { AppCacheService } from '../common/cache/app-cache.service';
 
 export interface PORequirementComputed {
   id: string;
@@ -86,7 +87,17 @@ export interface PurchaseOrderComputed {
 export class PurchaseOrdersService {
   private readonly logger = new Logger(PurchaseOrdersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
+
+  public invalidatePOCaches() {
+    this.cacheService.delPattern(/^po/);
+    this.cacheService.delPattern(/^dashboard/);
+    this.cacheService.delPattern(/^reports/);
+    this.cacheService.delPattern(/^inventory/);
+  }
 
   // ---------------------------------------------------------------------------
   // 1. HELPER: COMPUTE LINE STATUS
@@ -119,10 +130,14 @@ export class PurchaseOrdersService {
       totalRemainingKg: number;
     };
   }> {
-    const where: Prisma.PurchaseOrderWhereInput = {};
+    const cacheKey = `po:all:${JSON.stringify(filter)}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.PurchaseOrderWhereInput = {};
 
-    // Search filter
-    if (filter.search && filter.search.trim()) {
+        // Search filter
+        if (filter.search && filter.search.trim()) {
       const q = filter.search.trim();
       where.OR = [
         { poNumber: { contains: q, mode: 'insensitive' } },
@@ -340,23 +355,30 @@ export class PurchaseOrdersService {
       ),
     };
 
-    return {
-      purchaseOrders: filteredPOs,
-      summary,
-    };
+        return {
+          purchaseOrders: filteredPOs,
+          summary,
+        };
+      },
+      30,
+    );
   }
 
   // ---------------------------------------------------------------------------
   // 3. FIND PURCHASE ORDER BY ID OR PO NUMBER
   // ---------------------------------------------------------------------------
   async findById(idOrPoNumber: string): Promise<PurchaseOrderComputed> {
-    const po = await this.prisma.purchaseOrder.findFirst({
-      where: {
-        OR: [
-          { id: idOrPoNumber },
-          { poNumber: { equals: idOrPoNumber.trim(), mode: 'insensitive' } },
-        ],
-      },
+    const cacheKey = `po:detail:${idOrPoNumber.trim().toLowerCase()}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const po = await this.prisma.purchaseOrder.findFirst({
+          where: {
+            OR: [
+              { id: idOrPoNumber },
+              { poNumber: { equals: idOrPoNumber.trim(), mode: 'insensitive' } },
+            ],
+          },
       include: {
         party: true,
         requirements: {
@@ -463,35 +485,38 @@ export class PurchaseOrdersService {
       }
     }
 
-    return {
-      id: po.id,
-      poNumber: po.poNumber,
-      partyId: po.partyId,
-      party: {
-        id: po.party.id,
-        name: po.party.name,
-        code: po.party.code,
-        type: po.party.type,
-        contactPerson: po.party.contactPerson,
-        phone: po.party.phone,
-        email: po.party.email,
-        gstNumber: po.party.gstNumber,
-        address: po.party.address,
+        return {
+          id: po.id,
+          poNumber: po.poNumber,
+          partyId: po.partyId,
+          party: {
+            id: po.party.id,
+            name: po.party.name,
+            code: po.party.code,
+            type: po.party.type,
+            contactPerson: po.party.contactPerson,
+            phone: po.party.phone,
+            email: po.party.email,
+            gstNumber: po.party.gstNumber,
+            address: po.party.address,
+          },
+          status: effectiveStatus,
+          orderDate: po.orderDate,
+          deliveryDue: po.deliveryDue,
+          totalAmount: po.totalAmount ? Number(po.totalAmount) : null,
+          remarks: po.remarks,
+          createdAt: po.createdAt,
+          updatedAt: po.updatedAt,
+          totalRequiredKg: Number(poRequiredKg.toFixed(4)),
+          totalIssuedKg: Number(poIssuedKg.toFixed(4)),
+          totalRemainingKg: Number(poRemainingKg.toFixed(4)),
+          overallFulfillmentPct,
+          requirementsCount: computedReqs.length,
+          requirements: computedReqs,
+        };
       },
-      status: effectiveStatus,
-      orderDate: po.orderDate,
-      deliveryDue: po.deliveryDue,
-      totalAmount: po.totalAmount ? Number(po.totalAmount) : null,
-      remarks: po.remarks,
-      createdAt: po.createdAt,
-      updatedAt: po.updatedAt,
-      totalRequiredKg: Number(poRequiredKg.toFixed(4)),
-      totalIssuedKg: Number(poIssuedKg.toFixed(4)),
-      totalRemainingKg: Number(poRemainingKg.toFixed(4)),
-      overallFulfillmentPct,
-      requirementsCount: computedReqs.length,
-      requirements: computedReqs,
-    };
+      30,
+    );
   }
 
   private mapToPrismaPOStatus(status?: string): POStatus {
@@ -612,6 +637,7 @@ export class PurchaseOrdersService {
         },
       });
 
+      this.invalidatePOCaches();
       return this.findById(createdPo.id);
     } catch (error) {
       this.logger.error(`Failed to create purchase order ${cleanPo}: ${error?.message || error}`, error?.stack);
@@ -766,6 +792,7 @@ export class PurchaseOrdersService {
       },
     });
 
+    this.invalidatePOCaches();
     return this.findById(po.id);
   }
 
@@ -829,6 +856,7 @@ export class PurchaseOrdersService {
       },
     });
 
+    this.invalidatePOCaches();
     return this.findById(po.id);
   }
 

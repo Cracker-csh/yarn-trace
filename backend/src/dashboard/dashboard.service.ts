@@ -44,25 +44,22 @@ export interface DashboardOverviewResponse {
   }>;
 }
 
+import { AppCacheService } from '../common/cache/app-cache.service';
+
 @Injectable()
 export class DashboardService {
-  private cachedOverview: DashboardOverviewResponse | null = null;
-  private cacheTimestamp: number = 0;
-  private readonly CACHE_TTL = 15000; // 15 seconds
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly inventoryService: InventoryService,
+    private readonly cacheService: AppCacheService,
   ) {}
 
   async getOverview(): Promise<DashboardOverviewResponse> {
-    const now = Date.now();
-    if (this.cachedOverview && now - this.cacheTimestamp < this.CACHE_TTL) {
-      return this.cachedOverview;
-    }
-
-    // Parallel PostgreSQL Aggregations for Total Stock, Received, Issued, POs, Production, and Live Lots
-    const [
+    return this.cacheService.getOrSet(
+      'dashboard:overview',
+      async () => {
+        // Parallel PostgreSQL Aggregations for Total Stock, Received, Issued, POs, Production, and Live Lots
+        const [
       stockSummary,
       receivedAgg,
       issuedAgg,
@@ -287,9 +284,9 @@ export class DashboardService {
       recentMovements,
     };
 
-    this.cachedOverview = result;
-    this.cacheTimestamp = now;
-
     return result;
+  },
+  30,
+);
   }
 }

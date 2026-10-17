@@ -90,17 +90,18 @@ export default function DashboardPage() {
       const res = await apiClient.get("/dashboard/overview");
       return res.data.data;
     },
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // Fetch Parties for Modals
+  // Fetch Parties for Modals (Only on-demand when any modal is opened)
   const { data: parties = [] } = useQuery<Party[]>({
     queryKey: ["parties"],
     queryFn: async () => {
       const res = await apiClient.get("/parties");
       return res.data.data;
     },
+    enabled: isOpeningModalOpen || isReceiveModalOpen || isIssueModalOpen,
     staleTime: 60_000,
   });
 

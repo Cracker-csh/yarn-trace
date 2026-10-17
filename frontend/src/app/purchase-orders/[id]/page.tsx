@@ -46,9 +46,10 @@ import {
   CreatePOInput,
   UpdatePOInput,
 } from "../../../types/purchase-order";
-import CreatePOModal from "../../../components/purchase-orders/CreatePOModal";
-import CancelPOModal from "../../../components/purchase-orders/CancelPOModal";
-import ViewIssuesModal from "../../../components/purchase-orders/ViewIssuesModal";
+import dynamic from "next/dynamic";
+const CreatePOModal = dynamic(() => import("../../../components/purchase-orders/CreatePOModal"), { ssr: false });
+const CancelPOModal = dynamic(() => import("../../../components/purchase-orders/CancelPOModal"), { ssr: false });
+const ViewIssuesModal = dynamic(() => import("../../../components/purchase-orders/ViewIssuesModal"), { ssr: false });
 
 export default function PurchaseOrderDetailPage() {
   const router = useRouter();
@@ -107,9 +108,8 @@ export default function PurchaseOrderDetailPage() {
       return res.data.data;
     },
     enabled: !!poId,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   // ---------------------------------------------------------------------------

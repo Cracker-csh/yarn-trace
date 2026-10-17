@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   ShoppingCart,
   Plus,
@@ -42,8 +43,9 @@ import {
   CreatePOInput,
   UpdatePOInput,
 } from "../../types/purchase-order";
-import CreatePOModal from "../../components/purchase-orders/CreatePOModal";
-import CancelPOModal from "../../components/purchase-orders/CancelPOModal";
+import dynamic from "next/dynamic";
+const CreatePOModal = dynamic(() => import("../../components/purchase-orders/CreatePOModal"), { ssr: false });
+const CancelPOModal = dynamic(() => import("../../components/purchase-orders/CancelPOModal"), { ssr: false });
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
@@ -51,6 +53,7 @@ export default function PurchaseOrdersPage() {
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 250);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [fulfillmentFilter, setFulfillmentFilter] = useState("ALL");
   const [partyFilter, setPartyFilter] = useState("ALL");
@@ -99,14 +102,14 @@ export default function PurchaseOrdersPage() {
   }>({
     queryKey: [
       "purchase-orders",
-      searchTerm,
+      debouncedSearch,
       statusFilter,
       fulfillmentFilter,
       partyFilter,
     ],
     queryFn: async () => {
       const params: Record<string, string> = {};
-      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (statusFilter !== "ALL") params.status = statusFilter;
       if (fulfillmentFilter !== "ALL")
         params.fulfillmentStatus = fulfillmentFilter;
@@ -118,9 +121,9 @@ export default function PurchaseOrdersPage() {
         summary: res.data.summary,
       };
     },
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const purchaseOrders = poResponse?.purchaseOrders || [];

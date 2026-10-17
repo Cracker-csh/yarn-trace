@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   Factory,
   Plus,
@@ -33,13 +34,15 @@ import {
 } from "../../types/production";
 import { Party } from "../../types/inventory";
 
-// Production Components & Modals
+import dynamic from "next/dynamic";
+
+// Production Components & Modals (Lazy Loaded)
 import ProductionKpiCards from "../../components/production/ProductionKpiCards";
 import ProductionFilters from "../../components/production/ProductionFilters";
-import ProductionTeamsModal from "../../components/production/ProductionTeamsModal";
-import WorkOrderModal from "../../components/production/WorkOrderModal";
-import WorkOrderDetailModal from "../../components/production/WorkOrderDetailModal";
-import AllocateYarnModal from "../../components/production/AllocateYarnModal";
+const ProductionTeamsModal = dynamic(() => import("../../components/production/ProductionTeamsModal"), { ssr: false });
+const WorkOrderModal = dynamic(() => import("../../components/production/WorkOrderModal"), { ssr: false });
+const WorkOrderDetailModal = dynamic(() => import("../../components/production/WorkOrderDetailModal"), { ssr: false });
+const AllocateYarnModal = dynamic(() => import("../../components/production/AllocateYarnModal"), { ssr: false });
 
 export default function ProductionPage() {
 
@@ -56,6 +59,7 @@ export default function ProductionPage() {
 
   // Filter States
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
   const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | "">("");
   const [teamFilter, setTeamFilter] = useState("");
   const [partyFilter, setPartyFilter] = useState("");
@@ -114,10 +118,10 @@ export default function ProductionPage() {
     isLoading: isLoadingOrders,
     isFetching: isFetchingOrders,
   } = useQuery<{ data: ProductionOrder[]; meta: { total: number; page: number; limit: number; totalPages: number } }>({
-    queryKey: ["production", "orders", { search, status: statusFilter, teamId: teamFilter, partyId: partyFilter, page }],
+    queryKey: ["production", "orders", { search: debouncedSearch, status: statusFilter, teamId: teamFilter, partyId: partyFilter, page }],
     queryFn: async () => {
       const params: any = { page, limit: 20 };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
       if (teamFilter) params.productionTeamId = teamFilter;
       if (partyFilter) params.partyId = partyFilter;
@@ -125,7 +129,8 @@ export default function ProductionPage() {
       const res = await apiClient.get("/production/orders", { params });
       return res.data;
     },
-    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
   });
 
   const orders = ordersResponse?.data || [];

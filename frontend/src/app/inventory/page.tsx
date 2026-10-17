@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Boxes,
   Plus,
@@ -43,17 +43,19 @@ import {
   InventoryFilters,
 } from "../../types/inventory";
 
-// Subcomponents & Modals
+import dynamic from "next/dynamic";
+
+// Subcomponents & Modals (Lazy Loaded on Demand)
 import InventoryKpiCards from "../../components/inventory/InventoryKpiCards";
 import InventoryFilterBar from "../../components/inventory/InventoryFilterBar";
-import OpeningStockModal from "../../components/inventory/OpeningStockModal";
-import ReceiveStockModal from "../../components/inventory/ReceiveStockModal";
-import IssueStockModal from "../../components/inventory/IssueStockModal";
-import ReturnStockModal from "../../components/inventory/ReturnStockModal";
-import RetireStockModal from "../../components/inventory/RetireStockModal";
-import SellStockModal from "../../components/inventory/SellStockModal";
-import CorrectionModal from "../../components/inventory/CorrectionModal";
-import YarnSlipModal from "../../components/inventory/YarnSlipModal";
+const OpeningStockModal = dynamic(() => import("../../components/inventory/OpeningStockModal"), { ssr: false });
+const ReceiveStockModal = dynamic(() => import("../../components/inventory/ReceiveStockModal"), { ssr: false });
+const IssueStockModal = dynamic(() => import("../../components/inventory/IssueStockModal"), { ssr: false });
+const ReturnStockModal = dynamic(() => import("../../components/inventory/ReturnStockModal"), { ssr: false });
+const RetireStockModal = dynamic(() => import("../../components/inventory/RetireStockModal"), { ssr: false });
+const SellStockModal = dynamic(() => import("../../components/inventory/SellStockModal"), { ssr: false });
+const CorrectionModal = dynamic(() => import("../../components/inventory/CorrectionModal"), { ssr: false });
+const YarnSlipModal = dynamic(() => import("../../components/inventory/YarnSlipModal"), { ssr: false });
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -107,7 +109,7 @@ export default function InventoryPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // QUERIES
+  // QUERIES (OPTIMIZED WITH TAB-BASED LAZY FETCHING & 60s CACHING)
   // ---------------------------------------------------------------------------
   // 1. Stock Summary (KPIs)
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery<StockSummary>({
@@ -116,18 +118,22 @@ export default function InventoryPage() {
       const res = await apiClient.get("/inventory/summary");
       return res.data.data;
     },
+    staleTime: 60_000,
   });
 
-  // 2. Lots Stock Ledger
+  // 2. Lots Stock Ledger (Only fetched when on Lots or Counts tabs)
   const { data: lotsData, isLoading: isLotsLoading } = useQuery<LotRecord[]>({
     queryKey: ["inventory", "lots", filters],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/lots", { params: filters });
       return res.data.data;
     },
+    enabled: activeTab === "lots" || activeTab === "counts",
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
-  // 3. Transactions Ledger
+  // 3. Transactions Ledger (Only fetched when user clicks into Transactions tab)
   const { data: txData } = useQuery<{
     items: TransactionRecord[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
@@ -137,24 +143,30 @@ export default function InventoryPage() {
       const res = await apiClient.get("/inventory/transactions", { params: filters });
       return res.data.data;
     },
+    enabled: activeTab === "transactions",
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
-  // 4. Parties Master (Suppliers/Customers)
+  // 4. Parties Master (Suppliers/Customers with 2-min cache)
   const { data: partiesData } = useQuery<Party[]>({
     queryKey: ["parties"],
     queryFn: async () => {
       const res = await apiClient.get("/parties");
       return res.data.data;
     },
+    staleTime: 120_000,
   });
 
-  // 5. Active PO Requirements (for issue autocomplete & 103% ceiling verification)
+  // 5. Active PO Requirements (Only fetched on-demand when Issue or Slip modal is opened)
   const { data: poReqData } = useQuery<PORequirementOption[]>({
     queryKey: ["inventory", "po-requirements"],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/po-requirements");
       return res.data.data;
     },
+    enabled: isIssueOpen || isSlipOpen,
+    staleTime: 60_000,
   });
 
   const parties = useMemo(() => partiesData || [], [partiesData]);

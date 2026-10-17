@@ -1,26 +1,33 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { CreatePartyDto, UpdatePartyDto } from './dto/party.dto';
 
 @Injectable()
 export class PartiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
 
   async findAll(includeInactive = false) {
-    return this.prisma.party.findMany({
-      where: includeInactive ? {} : { isActive: true },
-      include: {
-        _count: {
-          select: {
-            suppliedLots: true,
-            purchaseOrders: true,
-            deliveries: true,
-            transactions: true,
+    const cacheKey = `parties:all:${includeInactive}`;
+    return this.cacheService.getOrSet(cacheKey, async () => {
+      return this.prisma.party.findMany({
+        where: includeInactive ? {} : { isActive: true },
+        include: {
+          _count: {
+            select: {
+              suppliedLots: true,
+              purchaseOrders: true,
+              deliveries: true,
+              transactions: true,
+            },
           },
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+      });
+    }, 60);
   }
 
   async findById(id: string) {
@@ -84,6 +91,7 @@ export class PartiesService {
       },
     });
 
+    this.cacheService.delPattern(/^parties/);
     return party;
   }
 
@@ -118,6 +126,7 @@ export class PartiesService {
       },
     });
 
+    this.cacheService.delPattern(/^parties/);
     return updated;
   }
 

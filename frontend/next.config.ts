@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  agentRules: false,
+  compress: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
   async rewrites() {
     const backendUrl =
       process.env.INTERNAL_BACKEND_URL ||

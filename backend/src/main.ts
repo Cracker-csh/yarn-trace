@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import * as compression from 'compression';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -41,6 +42,13 @@ async function bootstrap() {
   const vercelOriginRegex = /^https:\/\/[a-zA-Z0-9-_.]+\.vercel\.app$/;
   // Regex pattern for private LAN development origins (e.g. mobile testing over Wi-Fi)
   const lanOriginRegex = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+  // Response Compression (Gzip / Deflate for fast JSON transfers)
+  app.use(
+    compression({
+      threshold: 1024, // only compress responses >= 1KB
+    }),
+  );
 
   // Security Headers
   app.use(

@@ -93,7 +93,7 @@ export default function ReportsPage() {
   });
 
   const { data: parties = [] } = useQuery<Party[]>({
-    queryKey: ["parties", "options"],
+    queryKey: ["parties"],
     queryFn: async () => {
       const res = await apiClient.get("/parties");
       return res.data.data?.items || res.data.data || [];
@@ -102,7 +102,7 @@ export default function ReportsPage() {
   });
 
   const { data: teams = [] } = useQuery<Team[]>({
-    queryKey: ["production", "teams", "options"],
+    queryKey: ["production", "teams"],
     queryFn: async () => {
       const res = await apiClient.get("/production/teams");
       return res.data.data?.items || res.data.data || [];

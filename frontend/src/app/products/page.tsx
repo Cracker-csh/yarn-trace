@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   Layers,
   Plus,
@@ -43,10 +44,12 @@ import {
   ProductFilterParams,
 } from "../../types/product";
 
-// Products Modals
-import RegisterBatchModal from "../../components/products/RegisterBatchModal";
-import EditBatchModal from "../../components/products/EditBatchModal";
-import CancelBatchModal from "../../components/products/CancelBatchModal";
+import dynamic from "next/dynamic";
+
+// Products Modals (Lazy Loaded)
+const RegisterBatchModal = dynamic(() => import("../../components/products/RegisterBatchModal"), { ssr: false });
+const EditBatchModal = dynamic(() => import("../../components/products/EditBatchModal"), { ssr: false });
+const CancelBatchModal = dynamic(() => import("../../components/products/CancelBatchModal"), { ssr: false });
 
 export default function ProductsPage() {
   // Toast notifications
@@ -62,6 +65,7 @@ export default function ProductsPage() {
 
   // Filter States
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
   const [productTypeFilter, setProductTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [startDate, setStartDate] = useState("");
@@ -87,7 +91,7 @@ export default function ProductsPage() {
   }>({
     queryKey: [
       "products",
-      search,
+      debouncedSearch,
       productTypeFilter,
       statusFilter,
       startDate,
@@ -95,7 +99,7 @@ export default function ProductsPage() {
     ],
     queryFn: async () => {
       const params: ProductFilterParams = {};
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (productTypeFilter !== "ALL") params.productType = productTypeFilter;
       if (statusFilter !== "ALL") params.status = statusFilter;
       if (startDate) params.startDate = startDate;
@@ -104,6 +108,8 @@ export default function ProductsPage() {
       const res = await apiClient.get("/products", { params });
       return res.data.data;
     },
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
   const outputBatches = data?.outputBatches || [];

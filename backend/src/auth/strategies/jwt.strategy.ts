@@ -10,8 +10,15 @@ export interface JwtPayload {
   role: string;
 }
 
+interface CachedUser {
+  data: any;
+  expiresAt: number;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+  private readonly userCache = new Map<string, CachedUser>();
+
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
@@ -26,6 +33,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
+    const cacheKey = payload.sub;
+    const now = Date.now();
+    const cached = this.userCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       include: {
@@ -62,7 +76,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       new Set([...rolePermissions, ...directGranted]),
     ).filter((key) => !directRevoked.has(key));
 
-    return {
+    const validatedUser = {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
@@ -74,5 +88,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       },
       permissions: mergedPermissions,
     };
+
+    // Cache user permissions for 30 seconds to speed up concurrent requests
+    this.userCache.set(cacheKey, {
+      data: validatedUser,
+      expiresAt: now + 30_000,
+    });
+
+    return validatedUser;
   }
 }
