@@ -189,7 +189,18 @@ export class ProductsController {
   // 8. SOFT CANCEL OUTPUT BATCH (PRESERVES AUDIT & RELEASES PRODUCT STOCK)
   // ---------------------------------------------------------------------------
   @Post(':id/cancel')
-  @RequirePermission('products.cancel', 'manage_production', 'delete_records')
+  @RequirePermission(
+    'products.cancel',
+    'products.edit',
+    'manage_production',
+    'production.cancel',
+    'production.view',
+    'inventory.receive',
+    'inventory.retire',
+    'inventory.correct',
+    'edit_records',
+    'delete_records',
+  )
   @ApiOperation({
     summary: 'Soft-cancel / quarantine an output batch with audit reason',
   })
