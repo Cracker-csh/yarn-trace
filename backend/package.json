@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "node -e \"const fs = require('fs'); ['dist', 'tsconfig.tsbuildinfo', 'tsconfig.build.tsbuildinfo'].forEach(p => fs.existsSync(p) && fs.rmSync(p, { recursive: true, force: true }));\"",
     "prebuild": "npm run clean",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

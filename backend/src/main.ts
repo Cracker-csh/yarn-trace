@@ -37,6 +37,8 @@ async function bootstrap() {
 
   // Regex patterns for development preview tunnels (Cloudflare, LocalTunnel, ngrok)
   const tunnelOriginRegex = /^https:\/\/[a-zA-Z0-9-]+\.(trycloudflare\.com|loca\.lt|ngrok-free\.app|ngrok\.io)$/;
+  // Regex pattern for Vercel deployments (production, staging, and preview deployments)
+  const vercelOriginRegex = /^https:\/\/[a-zA-Z0-9-_.]+\.vercel\.app$/;
   // Regex pattern for private LAN development origins (e.g. mobile testing over Wi-Fi)
   const lanOriginRegex = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
@@ -70,12 +72,17 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      // 3. Check preview tunnel patterns (including *.trycloudflare.com) if enabled
+      // 3. Check Vercel deployments (production and preview branches)
+      if (vercelOriginRegex.test(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      // 4. Check preview tunnel patterns (including *.trycloudflare.com) if enabled
       if (allowTunnelOrigins && tunnelOriginRegex.test(normalizedOrigin)) {
         return callback(null, true);
       }
 
-      // 4. Check LAN development origins for local Wi-Fi mobile testing
+      // 5. Check LAN development origins for local Wi-Fi mobile testing
       if (lanOriginRegex.test(normalizedOrigin)) {
         return callback(null, true);
       }
@@ -147,7 +154,7 @@ async function bootstrap() {
     customSiteTitle: 'YarnTrace API Documentation',
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`🚀 YarnTrace API backend server is running on: http://localhost:${port}/api/v1`);
   logger.log(`📑 Interactive Swagger Documentation: http://localhost:${port}/api/docs`);
   logger.log(`🩺 Health endpoint available at: http://localhost:${port}/api/v1/health`);
