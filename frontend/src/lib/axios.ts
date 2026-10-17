@@ -10,40 +10,27 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 export const getApiBaseUrl = (): string => {
   const rawEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-  // If a comma-separated list was provided in .env (e.g. "http://localhost:4000/api/v1, https://saints-trademarks-prior-routines.trycloudflare.com"),
-  // sanitize and extract the valid remote HTTPS URL or first valid URL
-  let parsedEnvUrl: string | undefined = undefined;
-  if (rawEnv) {
-    const parts = rawEnv.split(",").map((p) => p.trim()).filter(Boolean);
-    const httpsPart = parts.find((p) => p.startsWith("https://"));
-    parsedEnvUrl = (httpsPart || parts[0])?.replace(/\/+$/, "");
-  }
-
   // Running inside client-side browser:
   if (typeof window !== "undefined") {
     const isLocalhost =
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1";
 
-    // If accessed remotely (e.g. via Cloudflare tunnel, mobile Safari/Chrome, or custom domain):
-    if (!isLocalhost) {
-      // If a dedicated public HTTPS backend URL is explicitly configured, use it
-      if (
-        parsedEnvUrl &&
-        parsedEnvUrl.startsWith("https://") &&
-        !parsedEnvUrl.includes("localhost")
-      ) {
-        return parsedEnvUrl;
-      }
-      // Otherwise, use same-origin relative path '/api/v1' (proxied by Next.js rewrites)
-      // This ensures 100% reliability without mixed-content or unreachable localhost on mobile
-      return `${window.location.origin}/api/v1`;
+    // 1. When running on local machine (localhost / 127.0.0.1):
+    // Always use local backend directly to avoid stale or expired remote tunnel domains
+    if (isLocalhost) {
+      return "http://localhost:4000/api/v1";
     }
+
+    // 2. When accessed remotely (e.g. via Cloudflare tunnel, mobile Safari/Chrome, or custom domain):
+    // Use same-origin relative path '/api/v1' (routed via Next.js reverse-proxy rewrites).
+    // This eliminates CORS issues, mixed content, and dead external tunnels completely!
+    return `${window.location.origin}/api/v1`;
   }
 
-  // Local development / SSR fallback
-  if (parsedEnvUrl && !parsedEnvUrl.includes(",")) {
-    return parsedEnvUrl;
+  // Server-Side Rendering (SSR) fallback
+  if (rawEnv && !rawEnv.includes(",") && !rawEnv.includes("trycloudflare.com")) {
+    return rawEnv.replace(/\/+$/, "");
   }
 
   return "http://localhost:4000/api/v1";
