@@ -120,12 +120,28 @@ export class UsersService {
     }
 
     // Validate role if changing
-    if (dto.roleId) {
+    if (dto.roleId && dto.roleId !== existing.role.id) {
       const role = await this.prisma.role.findUnique({
         where: { id: dto.roleId },
       });
       if (!role) {
         throw new BadRequestException(`Role with ID "${dto.roleId}" not found`);
+      }
+
+      // Protect last active administrator account from demotion
+      if (existing.role.code === 'ADMIN' && role.code !== 'ADMIN' && existing.status === UserStatus.ACTIVE) {
+        const activeAdminCount = await this.prisma.user.count({
+          where: {
+            role: { code: 'ADMIN' },
+            status: UserStatus.ACTIVE,
+          },
+        });
+
+        if (activeAdminCount <= 1) {
+          throw new BadRequestException(
+            'Cannot demote the last active administrator account. At least one active administrator is required for system operation and recovery.',
+          );
+        }
       }
     }
 
@@ -199,6 +215,22 @@ export class UsersService {
     // Prevent deactivating your own account
     if (adminUserId === id && status !== 'ACTIVE') {
       throw new BadRequestException('You cannot deactivate your own account');
+    }
+
+    // Protect last active administrator account from deactivation
+    if (existing.role.code === 'ADMIN' && status !== 'ACTIVE') {
+      const activeAdminCount = await this.prisma.user.count({
+        where: {
+          role: { code: 'ADMIN' },
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      if (activeAdminCount <= 1) {
+        throw new BadRequestException(
+          'Cannot delete or deactivate the last active administrator account. At least one active administrator is required for system operation and recovery.',
+        );
+      }
     }
 
     const user = await this.prisma.user.update({
@@ -276,7 +308,8 @@ export class UsersService {
       userId: existing.id,
       email: existing.email,
       temporaryPassword,
-      message: 'Temporary password generated successfully. Please provide this temporary credential to the user.',
+      requiresPasswordChange: true,
+      message: 'Temporary password generated successfully. Please provide this temporary credential to the user. The user must change their password on next login.',
     };
   }
 

@@ -18,14 +18,7 @@ import {
   ToggleLeft,
   ToggleRight,
   UserPlus,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Copy,
-  Check,
   Trash2,
-  Lock,
-  Info,
   ShieldAlert,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
@@ -58,7 +51,6 @@ import UserModal, {
   CreateUserFormValues,
   EditUserFormValues,
 } from "../../components/governance/UserModal";
-import ResetPasswordModal from "../../components/governance/ResetPasswordModal";
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
@@ -72,14 +64,6 @@ export default function UsersPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
-
-  // Password reset modal and temporary credentials state
-  const [resettingUser, setResettingUser] = useState<SystemUser | null>(null);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [tempPasswords, setTempPasswords] = useState<Record<string, string>>({});
-  const [revealedTempUsers, setRevealedTempUsers] = useState<Record<string, boolean>>({});
-  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
-  const [passwordInfoUser, setPasswordInfoUser] = useState<SystemUser | null>(null);
 
   // User deletion state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -324,43 +308,7 @@ export default function UsersPage() {
       });
     } else {
       const createValues = values as CreateUserFormValues;
-      const res = await createUserMutation.mutateAsync(createValues);
-      const newUserId = (res as { data?: { data?: { id?: string } } })?.data?.data?.id;
-      if (newUserId && createValues.password) {
-        setTempPasswords((prev) => ({
-          ...prev,
-          [newUserId]: createValues.password!,
-        }));
-        setRevealedTempUsers((prev) => ({
-          ...prev,
-          [newUserId]: false,
-        }));
-      }
-    }
-  };
-
-  const handleOpenResetModal = (user: SystemUser) => {
-    setResettingUser(user);
-    setIsResetModalOpen(true);
-  };
-
-  const handleResetSuccess = (userId: string, temporaryPassword: string) => {
-    setTempPasswords((prev) => ({ ...prev, [userId]: temporaryPassword }));
-    showToast("success", "Temporary password generated and active sessions revoked.");
-  };
-
-  const toggleRevealTempPassword = (userId: string) => {
-    setRevealedTempUsers((prev) => ({ ...prev, [userId]: !prev[userId] }));
-  };
-
-  const handleCopyTempPassword = async (userId: string, pass: string) => {
-    try {
-      await navigator.clipboard.writeText(pass);
-      setCopiedUserId(userId);
-      setTimeout(() => setCopiedUserId(null), 2000);
-    } catch {
-      setCopiedUserId(userId);
-      setTimeout(() => setCopiedUserId(null), 2000);
+      await createUserMutation.mutateAsync(createValues);
     }
   };
 
@@ -655,7 +603,7 @@ export default function UsersPage() {
             </div>
           ) : filteredUsers.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[900px] text-xs text-left">
+              <table className="w-full min-w-[760px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Name</th>
@@ -663,7 +611,6 @@ export default function UsersPage() {
                     <th className="py-3 px-3">Phone</th>
                     <th className="py-3 px-3">Role</th>
                     <th className="py-3 px-3 text-center">Status</th>
-                    <th className="py-3 px-3">Password</th>
                     <th className="py-3 px-3">Joined</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -697,7 +644,7 @@ export default function UsersPage() {
                       <td className="py-3.5 px-3">
                         <a
                           href={`mailto:${user.email}`}
-                          className="flex items-center gap-1.5 text-slate-600 hover:text-brand-600 truncate max-w-[200px]"
+                          className="flex items-center gap-1.5 text-slate-600 hover:text-brand-600 truncate max-w-[220px]"
                           title={user.email}
                         >
                           <Mail className="h-3 w-3 text-slate-400 shrink-0" />
@@ -730,99 +677,6 @@ export default function UsersPage() {
                       {/* Status */}
                       <td className="py-3.5 px-3 text-center">
                         {getStatusBadge(user.status)}
-                      </td>
-
-                      {/* Password */}
-                      <td className="py-3.5 px-3">
-                        {tempPasswords[user.id] ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/90 rounded-md px-2 py-1 max-w-[170px]">
-                              <span className="font-mono text-xs font-bold text-slate-800 tracking-wider truncate">
-                                {revealedTempUsers[user.id]
-                                  ? tempPasswords[user.id]
-                                  : "••••••••"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleRevealTempPassword(user.id)}
-                                aria-label={
-                                  revealedTempUsers[user.id]
-                                    ? "Hide temporary password"
-                                    : "Show temporary password"
-                                }
-                                title={
-                                  revealedTempUsers[user.id]
-                                    ? "Hide temporary password"
-                                    : "Show temporary password"
-                                }
-                                className="text-amber-700 hover:text-amber-900 p-0.5 rounded transition-colors shrink-0 ml-1"
-                              >
-                                {revealedTempUsers[user.id] ? (
-                                  <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-                                ) : (
-                                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleCopyTempPassword(user.id, tempPasswords[user.id])
-                                }
-                                aria-label="Copy temporary password"
-                                title="Copy temporary password"
-                                className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors shrink-0"
-                              >
-                                {copiedUserId === user.id ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                                )}
-                              </button>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenResetModal(user)}
-                              className="h-7 px-1.5 text-[11px] text-slate-500 hover:text-brand-700 hover:bg-brand-50"
-                              title="Re-issue temporary password"
-                            >
-                              <KeyRound className="h-3.5 w-3.5 text-amber-600" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setPasswordInfoUser(user)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  setPasswordInfoUser(user);
-                                }
-                              }}
-                              aria-label="Password is cryptographically secured with bcrypt. Click for security details."
-                              title="Stored as cryptographic bcrypt hash and cannot be decrypted. Click for details or use Reset to issue a temporary password."
-                              className="flex items-center gap-1.5 text-slate-500 bg-slate-50 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/80 rounded-md px-2 py-1 cursor-pointer transition-colors"
-                            >
-                              <Lock className="h-3 w-3 text-slate-400" />
-                              <span className="font-mono text-[11px] select-none tracking-widest text-slate-400">
-                                ••••••••
-                              </span>
-                              <Info className="h-3 w-3 text-slate-400 hover:text-slate-600 transition-colors ml-0.5" />
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenResetModal(user)}
-                              className="h-7 px-2 text-[11px] gap-1 text-slate-700 hover:text-brand-700 hover:border-brand-300 hover:bg-brand-50/50"
-                              title="Reset password and issue temporary credential"
-                            >
-                              <KeyRound className="h-3 w-3 text-brand-600" />
-                              <span>Reset</span>
-                            </Button>
-                          </div>
-                        )}
                       </td>
 
                       {/* Joined */}
@@ -952,17 +806,6 @@ export default function UsersPage() {
         }
       />
 
-      {/* Secure Password Reset Modal */}
-      <ResetPasswordModal
-        isOpen={isResetModalOpen}
-        onClose={() => {
-          setIsResetModalOpen(false);
-          setResettingUser(null);
-        }}
-        user={resettingUser}
-        onSuccess={handleResetSuccess}
-      />
-
       {/* Delete User Confirmation Dialog */}
       <ConfirmDialog
         open={isDeleteModalOpen}
@@ -993,77 +836,6 @@ export default function UsersPage() {
           ) : null
         }
       />
-
-      {/* Password Security Information Dialog */}
-      <Dialog
-        open={Boolean(passwordInfoUser)}
-        onOpenChange={(open) => !open && setPasswordInfoUser(null)}
-      >
-        <DialogContent className="max-w-[440px] p-5 sm:p-6 w-full">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-200">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold text-slate-900">
-                  Password Security & Protection
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                  {passwordInfoUser?.firstName} {passwordInfoUser?.lastName} •{" "}
-                  <span className="font-mono text-slate-600">
-                    {passwordInfoUser?.email}
-                  </span>
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-3 pt-2 text-xs text-slate-600 leading-relaxed">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <p className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-brand-600" />
-                <span>Cryptographic One-Way Hashing (bcrypt)</span>
-              </p>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                YarnTrace user passwords are encrypted using salted one-way bcrypt cryptographic hashes.
-                By mathematical design, password hashes cannot be decrypted, reversed, or revealed to anyone—even system administrators.
-              </p>
-            </div>
-
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              If this user forgot their password or needs new credentials, you can issue a secure temporary password.
-              The temporary password will be displayed immediately for you to share with the user.
-            </p>
-          </div>
-
-          <DialogFooter className="mt-5 sm:mt-6 sm:space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPasswordInfoUser(null)}
-              className="h-9 px-4 text-xs"
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                const target = passwordInfoUser;
-                setPasswordInfoUser(null);
-                if (target) {
-                  handleOpenResetModal(target);
-                }
-              }}
-              className="h-9 px-4 text-xs gap-1.5"
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-              <span>Reset Password</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Safe Deactivation Notice Dialog */}
       <Dialog

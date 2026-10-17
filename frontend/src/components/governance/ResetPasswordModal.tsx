@@ -129,11 +129,12 @@ export default function ResetPasswordModal({
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                {resultPassword ? "Temporary Credential Issued" : "Reset User Password"}
+                {resultPassword ? "Temporary Credential Issued" : "Confirm Password Reset"}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                {user.firstName} {user.lastName} •{" "}
-                <span className="font-mono text-slate-600">{user.email}</span>
+                {resultPassword
+                  ? "Share this single-view credential securely with the user"
+                  : `Reset credentials and revoke active sessions for ${user.firstName} ${user.lastName}`}
               </DialogDescription>
             </div>
           </div>
@@ -148,15 +149,15 @@ export default function ResetPasswordModal({
                 <span>Password Successfully Reset</span>
               </div>
               <p className="text-[11px] text-emerald-700 leading-relaxed">
-                The user&apos;s previous credentials and active sessions have been invalidated.
-                Share this temporary credential with the user.
+                Active sessions for <strong>{user.firstName} {user.lastName}</strong> (
+                <span className="font-mono">{user.email}</span>) have been revoked.
               </p>
             </div>
 
             {/* Temporary Credential Box */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-600">
-                <span className="font-medium">Temporary Password:</span>
+                <span className="font-medium">New Temporary Password:</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                   Temporary Credential
                 </span>
@@ -206,9 +207,26 @@ export default function ResetPasswordModal({
                 </Button>
               </div>
 
-              <p className="text-[11px] text-slate-500 italic pt-1">
-                Note: This temporary credential is safe to share with the user once. For security, YarnTrace stores only cryptographic hashes and never saves plaintext passwords.
-              </p>
+              {/* Single-view credential notice */}
+              <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2.5 text-[11px] text-amber-900 leading-relaxed flex items-start gap-2 mt-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Single-view credential notice:</strong> This temporary
+                  password is only displayed right now. It cannot be viewed or
+                  retrieved after closing this dialog or refreshing the page.
+                  YarnTrace stores only irreversible cryptographic hashes.
+                </span>
+              </div>
+
+              {/* Next Login Requirement Notice */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-2.5 text-[11px] text-blue-900 leading-relaxed flex items-start gap-2 mt-2">
+                <ShieldAlert className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Next-Login Requirement:</strong> Provide this credential securely
+                  to the user. The user must update their password immediately upon their
+                  next login to establish their own private password.
+                </span>
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
@@ -223,16 +241,37 @@ export default function ResetPasswordModal({
             </DialogFooter>
           </div>
         ) : (
-          /* Form View */
-          <form onSubmit={handleReset} className="space-y-4 pt-1">
-            {/* Cryptographic Security Notice */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
-                <ShieldAlert className="h-4 w-4 text-slate-500 shrink-0" />
-                <span>Zero-Knowledge Credential Security</span>
+          /* Confirmation & Setup Form View */
+          <form onSubmit={handleReset} className="space-y-3.5 pt-1">
+            {/* User Identification Card */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 font-bold text-xs border border-brand-200">
+                {user.firstName[0]}
+                {user.lastName[0]}
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Existing passwords are cryptographically hashed using bcrypt and cannot be retrieved or decrypted. Resetting creates a new temporary password and terminates any existing sessions.
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-slate-900 truncate">
+                  {user.firstName} {user.lastName}
+                </div>
+                <div className="text-xs text-slate-500 font-mono truncate">
+                  {user.email}
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                {user.role.name}
+              </span>
+            </div>
+
+            {/* Explicit Confirmation Notice */}
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 text-amber-900 font-semibold">
+                <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Confirm Session Invalidation</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Confirming will immediately invalidate all active sessions for{" "}
+                <strong>{user.firstName} {user.lastName}</strong> and generate a
+                new temporary password.
               </p>
             </div>
 
@@ -263,7 +302,7 @@ export default function ResetPasswordModal({
                     <span>Auto-Generate</span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Secure 12-char random alphanumeric
+                    Secure 12-char random credential (YT#...)
                   </p>
                 </button>
 
@@ -281,7 +320,7 @@ export default function ResetPasswordModal({
                     <span>Custom Temporary</span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Set explicit temporary password
+                    Provide explicit temporary password
                   </p>
                 </button>
               </div>
@@ -331,7 +370,7 @@ export default function ResetPasswordModal({
               <Input
                 id="reset-reason"
                 type="text"
-                placeholder="e.g. Employee requested password reset"
+                placeholder="e.g. User requested password reset / locked out"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="h-10 text-xs"
@@ -352,10 +391,10 @@ export default function ResetPasswordModal({
                 variant="primary"
                 type="submit"
                 disabled={isLoading}
-                className="h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700"
+                className="h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
               >
                 {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <span>Issue Temporary Password</span>
+                <span>Confirm & Issue Temporary Password</span>
               </Button>
             </DialogFooter>
           </form>
