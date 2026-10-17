@@ -42,8 +42,9 @@ import {
   CreatePOInput,
   UpdatePOInput,
 } from "../../types/purchase-order";
-import CreatePOModal from "../../components/purchase-orders/CreatePOModal";
-import CancelPOModal from "../../components/purchase-orders/CancelPOModal";
+import dynamic from "next/dynamic";
+const CreatePOModal = dynamic(() => import("../../components/purchase-orders/CreatePOModal"), { ssr: false });
+const CancelPOModal = dynamic(() => import("../../components/purchase-orders/CancelPOModal"), { ssr: false });
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
@@ -118,9 +119,8 @@ export default function PurchaseOrdersPage() {
         summary: res.data.summary,
       };
     },
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const purchaseOrders = poResponse?.purchaseOrders || [];

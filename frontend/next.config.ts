@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   agentRules: false,
+  compress: true,
+  poweredByHeader: false,
   async rewrites() {
     const backendUrl =
       process.env.INTERNAL_BACKEND_URL ||

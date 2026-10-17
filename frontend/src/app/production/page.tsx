@@ -33,13 +33,15 @@ import {
 } from "../../types/production";
 import { Party } from "../../types/inventory";
 
-// Production Components & Modals
+import dynamic from "next/dynamic";
+
+// Production Components & Modals (Lazy Loaded)
 import ProductionKpiCards from "../../components/production/ProductionKpiCards";
 import ProductionFilters from "../../components/production/ProductionFilters";
-import ProductionTeamsModal from "../../components/production/ProductionTeamsModal";
-import WorkOrderModal from "../../components/production/WorkOrderModal";
-import WorkOrderDetailModal from "../../components/production/WorkOrderDetailModal";
-import AllocateYarnModal from "../../components/production/AllocateYarnModal";
+const ProductionTeamsModal = dynamic(() => import("../../components/production/ProductionTeamsModal"), { ssr: false });
+const WorkOrderModal = dynamic(() => import("../../components/production/WorkOrderModal"), { ssr: false });
+const WorkOrderDetailModal = dynamic(() => import("../../components/production/WorkOrderDetailModal"), { ssr: false });
+const AllocateYarnModal = dynamic(() => import("../../components/production/AllocateYarnModal"), { ssr: false });
 
 export default function ProductionPage() {
 

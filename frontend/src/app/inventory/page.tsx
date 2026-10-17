@@ -43,17 +43,19 @@ import {
   InventoryFilters,
 } from "../../types/inventory";
 
-// Subcomponents & Modals
+import dynamic from "next/dynamic";
+
+// Subcomponents & Modals (Lazy Loaded on Demand)
 import InventoryKpiCards from "../../components/inventory/InventoryKpiCards";
 import InventoryFilterBar from "../../components/inventory/InventoryFilterBar";
-import OpeningStockModal from "../../components/inventory/OpeningStockModal";
-import ReceiveStockModal from "../../components/inventory/ReceiveStockModal";
-import IssueStockModal from "../../components/inventory/IssueStockModal";
-import ReturnStockModal from "../../components/inventory/ReturnStockModal";
-import RetireStockModal from "../../components/inventory/RetireStockModal";
-import SellStockModal from "../../components/inventory/SellStockModal";
-import CorrectionModal from "../../components/inventory/CorrectionModal";
-import YarnSlipModal from "../../components/inventory/YarnSlipModal";
+const OpeningStockModal = dynamic(() => import("../../components/inventory/OpeningStockModal"), { ssr: false });
+const ReceiveStockModal = dynamic(() => import("../../components/inventory/ReceiveStockModal"), { ssr: false });
+const IssueStockModal = dynamic(() => import("../../components/inventory/IssueStockModal"), { ssr: false });
+const ReturnStockModal = dynamic(() => import("../../components/inventory/ReturnStockModal"), { ssr: false });
+const RetireStockModal = dynamic(() => import("../../components/inventory/RetireStockModal"), { ssr: false });
+const SellStockModal = dynamic(() => import("../../components/inventory/SellStockModal"), { ssr: false });
+const CorrectionModal = dynamic(() => import("../../components/inventory/CorrectionModal"), { ssr: false });
+const YarnSlipModal = dynamic(() => import("../../components/inventory/YarnSlipModal"), { ssr: false });
 
 export default function InventoryPage() {
   const router = useRouter();

@@ -43,10 +43,12 @@ import {
   ProductFilterParams,
 } from "../../types/product";
 
-// Products Modals
-import RegisterBatchModal from "../../components/products/RegisterBatchModal";
-import EditBatchModal from "../../components/products/EditBatchModal";
-import CancelBatchModal from "../../components/products/CancelBatchModal";
+import dynamic from "next/dynamic";
+
+// Products Modals (Lazy Loaded)
+const RegisterBatchModal = dynamic(() => import("../../components/products/RegisterBatchModal"), { ssr: false });
+const EditBatchModal = dynamic(() => import("../../components/products/EditBatchModal"), { ssr: false });
+const CancelBatchModal = dynamic(() => import("../../components/products/CancelBatchModal"), { ssr: false });
 
 export default function ProductsPage() {
   // Toast notifications

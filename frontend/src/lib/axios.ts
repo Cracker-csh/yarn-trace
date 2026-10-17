@@ -17,14 +17,18 @@ export const getApiBaseUrl = (): string => {
       window.location.hostname === "127.0.0.1";
 
     // 1. When running on local machine (localhost / 127.0.0.1):
-    // Always use local backend directly to avoid stale or expired remote tunnel domains
+    // Always use local backend directly
     if (isLocalhost) {
       return "http://localhost:4000/api/v1";
     }
 
-    // 2. When accessed remotely (e.g. via Cloudflare tunnel, mobile Safari/Chrome, or custom domain):
-    // Use same-origin relative path '/api/v1' (routed via Next.js reverse-proxy rewrites).
-    // This eliminates CORS issues, mixed content, and dead external tunnels completely!
+    // 2. Direct Cloud Backend: If an explicit public API URL is configured (e.g. Railway or custom domain),
+    // connect directly to bypass intermediate serverless proxies and drastically reduce network latency
+    if (rawEnv && rawEnv.startsWith("http") && !rawEnv.includes("trycloudflare.com")) {
+      return rawEnv.replace(/\/+$/, "");
+    }
+
+    // 3. Fallback to same-origin relative path '/api/v1' (routed via Next.js reverse-proxy rewrites)
     return `${window.location.origin}/api/v1`;
   }
 
