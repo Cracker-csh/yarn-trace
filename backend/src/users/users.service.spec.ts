@@ -170,6 +170,221 @@ describe('UsersService', () => {
 
       hashSpy.mockRestore();
     });
+
+    it('should auto-generate a secure temporary password when not provided in dto according to project rules', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        email: 'staff@yarntrace.com',
+        firstName: 'Staff',
+        lastName: 'Member',
+        status: UserStatus.ACTIVE,
+      });
+      mockPrismaService.user.update.mockResolvedValue({});
+
+      const result = await service.resetPassword(targetUserId, {}, adminUserId);
+
+      // Verify generated password complexity and flags
+      expect(result.temporaryPassword).toBeDefined();
+      expect(result.temporaryPassword.length).toBeGreaterThanOrEqual(10);
+      expect(result.temporaryPassword.startsWith('YT#')).toBe(true);
+      expect(result.requiresPasswordChange).toBe(true);
+
+      // Verify DB update received a valid bcrypt hash
+      const updateData = mockPrismaService.user.update.mock.calls[0][0].data;
+      expect(updateData.passwordHash).toBeDefined();
+      expect(updateData.passwordHash.startsWith('$2')).toBe(true); // Valid bcrypt prefix
+      expect(updateData.refreshTokenHash).toBeNull();
+    });
+
+    it('should record administrative reason and session revocation in audit trail upon reset', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        email: 'staff@yarntrace.com',
+        firstName: 'Staff',
+        lastName: 'Member',
+        status: UserStatus.ACTIVE,
+      });
+      mockPrismaService.user.update.mockResolvedValue({});
+
+      await service.resetPassword(
+        targetUserId,
+        { reason: 'User requested recovery after lockout' },
+        adminUserId,
+      );
+
+      expect(mockAuditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: adminUserId,
+          action: 'USER_PASSWORD_RESET',
+          entityType: 'User',
+          entityId: targetUserId,
+          metadata: expect.objectContaining({
+            reason: 'User requested recovery after lockout',
+            sessionsRevoked: true,
+          }),
+        }),
+      );
+    });
+
+    it('should reject temporary passwords shorter than 6 characters via ResetPasswordDto', async () => {
+      const { validate } = require('class-validator');
+      const { ResetPasswordDto } = require('./dto/reset-password.dto');
+
+      const dto = new ResetPasswordDto();
+      dto.temporaryPassword = '123'; // Invalid: only 3 chars
+
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].constraints.minLength).toBeDefined();
+    });
+
+    it('should verify login continues to work with the new password and fails with the old password after reset', async () => {
+      const oldPassword = 'OldUserPassword123!';
+      const newTemporaryPassword = 'NewSecureTempPass456#';
+
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        email: 'operator@yarntrace.com',
+        firstName: 'Operator',
+        lastName: 'One',
+        status: UserStatus.ACTIVE,
+      });
+
+      let storedHash = await HashUtil.hash(oldPassword);
+      mockPrismaService.user.update.mockImplementation(async ({ data }) => {
+        storedHash = data.passwordHash;
+        return {};
+      });
+
+      // Before reset: old password matches
+      expect(await HashUtil.compare(oldPassword, storedHash)).toBe(true);
+      expect(await HashUtil.compare(newTemporaryPassword, storedHash)).toBe(false);
+
+      // Perform reset
+      await service.resetPassword(
+        targetUserId,
+        { temporaryPassword: newTemporaryPassword },
+        adminUserId,
+      );
+
+      // After reset: new password matches, old password fails
+      expect(await HashUtil.compare(newTemporaryPassword, storedHash)).toBe(true);
+      expect(await HashUtil.compare(oldPassword, storedHash)).toBe(false);
+    });
+
+    it('should never store plaintext passwords in database fields or audit logs', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        email: 'secure@yarntrace.com',
+        firstName: 'Secure',
+        lastName: 'User',
+        status: UserStatus.ACTIVE,
+      });
+      mockPrismaService.user.update.mockResolvedValue({});
+
+      const plainTemp = 'SuperSecretPlaintext123!';
+      await service.resetPassword(
+        targetUserId,
+        { temporaryPassword: plainTemp },
+        adminUserId,
+      );
+
+      const updateCallArgs = mockPrismaService.user.update.mock.calls[0][0].data;
+      // No plaintext password field in update
+      expect((updateCallArgs as Record<string, unknown>).temporaryPassword).toBeUndefined();
+      expect((updateCallArgs as Record<string, unknown>).password).toBeUndefined();
+      expect(updateCallArgs.passwordHash).not.toEqual(plainTemp);
+
+      // No plaintext password in audit log
+      const auditLogCall = mockAuditService.log.mock.calls[0][0];
+      const logStr = JSON.stringify(auditLogCall);
+      expect(logStr.includes(plainTemp)).toBe(false);
+    });
+  });
+
+  describe('updateStatus', () => {
+    const adminUserId = 'admin-user-id';
+    const targetUserId = 'target-user-id';
+
+    it('should prevent an administrator from deactivating their own account', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: adminUserId,
+        status: UserStatus.ACTIVE,
+        role: { id: 'role-1', code: 'ADMIN', name: 'Administrator' },
+      });
+
+      await expect(
+        service.updateStatus(adminUserId, UserStatus.INACTIVE, adminUserId),
+      ).rejects.toThrow('You cannot deactivate your own account');
+    });
+
+    it('should prevent deactivating the last active administrator account', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        status: UserStatus.ACTIVE,
+        role: { id: 'role-1', code: 'ADMIN', name: 'Administrator' },
+      });
+
+      mockPrismaService.user.count.mockResolvedValue(1); // Only 1 active administrator
+
+      await expect(
+        service.updateStatus(targetUserId, UserStatus.INACTIVE, adminUserId),
+      ).rejects.toThrow('Cannot delete or deactivate the last active administrator account');
+    });
+
+    it('should successfully deactivate an administrator when multiple active admins exist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        status: UserStatus.ACTIVE,
+        email: 'secondary_admin@yarntrace.com',
+        role: { id: 'role-1', code: 'ADMIN', name: 'Administrator' },
+      });
+
+      mockPrismaService.user.count.mockResolvedValue(2); // 2 active admins
+      mockPrismaService.user.update.mockResolvedValue({
+        id: targetUserId,
+        status: UserStatus.INACTIVE,
+        email: 'secondary_admin@yarntrace.com',
+      });
+
+      const result = await service.updateStatus(targetUserId, UserStatus.INACTIVE, adminUserId);
+      expect(result.status).toBe(UserStatus.INACTIVE);
+      expect(mockAuditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'USER_STATUS_CHANGE',
+          entityId: targetUserId,
+        }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    const adminUserId = 'admin-user-id';
+    const targetUserId = 'target-user-id';
+
+    it('should prevent demoting the last active administrator away from ADMIN role', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: targetUserId,
+        status: UserStatus.ACTIVE,
+        role: { id: 'admin-role-id', code: 'ADMIN', name: 'Administrator' },
+      });
+
+      mockPrismaService.role.findUnique.mockResolvedValue({
+        id: 'operator-role-id',
+        code: 'OPERATOR',
+        name: 'Operator',
+      });
+
+      mockPrismaService.user.count.mockResolvedValue(1); // Only 1 active administrator
+
+      await expect(
+        service.update(
+          targetUserId,
+          { roleId: 'operator-role-id' },
+          adminUserId,
+        ),
+      ).rejects.toThrow('Cannot demote the last active administrator account');
+    });
   });
 
   describe('delete', () => {
