@@ -280,6 +280,177 @@ export class UsersService {
     };
   }
 
+  async delete(id: string, adminUserId?: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        role: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
+    }
+
+    // 1. Prevent self-deletion
+    if (adminUserId && adminUserId === id) {
+      throw new BadRequestException('You cannot delete your own account to prevent administrative lockout');
+    }
+
+    // 2. Protect critical system accounts and last active administrator
+    if (targetUser.role.code === 'ADMIN') {
+      const activeAdminCount = await this.prisma.user.count({
+        where: {
+          role: { code: 'ADMIN' },
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      if (targetUser.status === UserStatus.ACTIVE && activeAdminCount <= 1) {
+        throw new BadRequestException(
+          'Cannot delete or deactivate the last active administrator account. At least one active administrator is required for system operation and recovery.',
+        );
+      }
+
+      const totalAdminCount = await this.prisma.user.count({
+        where: {
+          role: { code: 'ADMIN' },
+        },
+      });
+
+      if (totalAdminCount <= 1) {
+        throw new BadRequestException(
+          'Cannot delete the primary administrator account. The system requires at least one administrator account.',
+        );
+      }
+    }
+
+    // 3. Inspect historical business records and foreign-key dependencies
+    const [
+      transactionCount,
+      productionOrderCount,
+      allocationCount,
+      consumptionCount,
+      returnCount,
+      outputCount,
+      auditLogCount,
+    ] = await Promise.all([
+      this.prisma.transaction.count({ where: { createdById: id } }),
+      this.prisma.productionOrder.count({ where: { createdById: id } }),
+      this.prisma.yarnAllocation.count({ where: { allocatedById: id } }),
+      this.prisma.consumptionRecord.count({ where: { recordedById: id } }),
+      this.prisma.productionReturn.count({ where: { recordedById: id } }),
+      this.prisma.productionOutput.count({ where: { recordedById: id } }),
+      this.prisma.auditLog.count({ where: { userId: id } }),
+    ]);
+
+    const totalHistoricalReferences =
+      transactionCount +
+      productionOrderCount +
+      allocationCount +
+      consumptionCount +
+      returnCount +
+      outputCount +
+      auditLogCount;
+
+    // 4. Safe deactivation if historical records exist to preserve audit trails & relational integrity
+    if (totalHistoricalReferences > 0) {
+      await this.prisma.user.update({
+        where: { id },
+        data: {
+          status: UserStatus.INACTIVE,
+          refreshTokenHash: null,
+        },
+      });
+
+      const refParts: string[] = [];
+      if (transactionCount > 0) refParts.push(`${transactionCount} stock transaction(s)`);
+      if (productionOrderCount > 0) refParts.push(`${productionOrderCount} production order(s)`);
+      if (allocationCount > 0) refParts.push(`${allocationCount} yarn allocation(s)`);
+      if (consumptionCount > 0) refParts.push(`${consumptionCount} consumption record(s)`);
+      if (returnCount > 0) refParts.push(`${returnCount} production return(s)`);
+      if (outputCount > 0) refParts.push(`${outputCount} production output(s)`);
+      if (auditLogCount > 0) refParts.push(`${auditLogCount} audit log(s)`);
+
+      const refSummary = refParts.join(', ');
+
+      await this.auditService.log({
+        userId: adminUserId,
+        action: 'USER_DEACTIVATE_PRESERVE_HISTORY',
+        module: 'GOVERNANCE',
+        entityType: 'User',
+        entityId: targetUser.id,
+        oldValue: { status: targetUser.status },
+        newValue: { status: UserStatus.INACTIVE },
+        metadata: {
+          targetUserEmail: targetUser.email,
+          reason: 'Safe deactivation performed instead of permanent deletion due to protected historical references',
+          references: {
+            transactions: transactionCount,
+            productionOrders: productionOrderCount,
+            allocations: allocationCount,
+            consumptions: consumptionCount,
+            returns: returnCount,
+            outputs: outputCount,
+            auditLogs: auditLogCount,
+          },
+        },
+      });
+
+      return {
+        action: 'DEACTIVATED' as const,
+        permanent: false,
+        deactivated: true,
+        userId: targetUser.id,
+        email: targetUser.email,
+        message: `User account "${targetUser.firstName} ${targetUser.lastName}" has protected historical records (${refSummary}). To preserve audit trails and business history, the account was safely deactivated instead of permanently deleted.`,
+        references: {
+          transactions: transactionCount,
+          productionOrders: productionOrderCount,
+          allocations: allocationCount,
+          consumptions: consumptionCount,
+          returns: returnCount,
+          outputs: outputCount,
+          auditLogs: auditLogCount,
+        },
+      };
+    }
+
+    // 5. Permanent deletion for users without protected references
+    await this.prisma.userPermission.deleteMany({ where: { userId: id } });
+    await this.prisma.user.delete({ where: { id } });
+
+    await this.auditService.log({
+      userId: adminUserId,
+      action: 'USER_PERMANENT_DELETE',
+      module: 'GOVERNANCE',
+      entityType: 'User',
+      entityId: targetUser.id,
+      oldValue: {
+        email: targetUser.email,
+        firstName: targetUser.firstName,
+        lastName: targetUser.lastName,
+        role: targetUser.role.name,
+        status: targetUser.status,
+      },
+      newValue: null,
+      metadata: {
+        targetUserEmail: targetUser.email,
+        permanent: true,
+      },
+    });
+
+    return {
+      action: 'DELETED' as const,
+      permanent: true,
+      deactivated: false,
+      userId: targetUser.id,
+      email: targetUser.email,
+      message: `User account "${targetUser.firstName} ${targetUser.lastName}" was permanently deleted successfully.`,
+      references: {},
+    };
+  }
+
   private generateSecureTemporaryPassword(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
     const randomBytes = crypto.randomBytes(9);
