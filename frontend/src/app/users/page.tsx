@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
-  UserCog,
   Plus,
   Search,
   Shield,
@@ -19,15 +18,21 @@ import {
   ToggleLeft,
   ToggleRight,
   UserPlus,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Copy,
-  Check,
+  Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -41,6 +46,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
 import dynamic from "next/dynamic";
+import { useAppSelector } from "../../store/hooks";
 import { SystemUser, RoleListItem } from "../../types/governance";
 import type {
   CreateUserFormValues,
@@ -51,6 +57,7 @@ const ResetPasswordModal = dynamic(() => import("../../components/governance/Res
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,12 +68,22 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
 
-  // Password reset modal and temporary credentials state
-  const [resettingUser, setResettingUser] = useState<SystemUser | null>(null);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [tempPasswords, setTempPasswords] = useState<Record<string, string>>({});
-  const [revealedTempUsers, setRevealedTempUsers] = useState<Record<string, boolean>>({});
-  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  // User deletion state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<SystemUser | null>(null);
+  const [deactivatedNotice, setDeactivatedNotice] = useState<{
+    user: SystemUser;
+    message: string;
+    references?: {
+      transactions?: number;
+      productionOrders?: number;
+      allocations?: number;
+      consumptions?: number;
+      returns?: number;
+      outputs?: number;
+      auditLogs?: number;
+    };
+  } | null>(null);
 
   // Toast feedback
   const [toast, setToast] = useState<{
@@ -173,6 +190,43 @@ export default function UsersPage() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/users/${id}`),
+    onSuccess: (res) => {
+      invalidateAll();
+      setIsDeleteModalOpen(false);
+      const data = res.data?.data;
+      const target = userToDelete;
+      setUserToDelete(null);
+
+      if (data?.deactivated) {
+        showToast(
+          "success",
+          "User account deactivated to protect audit history."
+        );
+        if (target) {
+          setDeactivatedNotice({
+            user: target,
+            message: data.message,
+            references: data.references,
+          });
+        }
+      } else {
+        showToast(
+          "success",
+          data?.message || "User account permanently deleted successfully!"
+        );
+      }
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      setIsDeleteModalOpen(false);
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to delete user account"
+      );
+    },
+  });
+
   // ---------------------------------------------------------------------------
   // 4. FILTERED USERS & METRICS
   // ---------------------------------------------------------------------------
@@ -206,6 +260,9 @@ export default function UsersPage() {
   const totalCount = users.length;
   const activeCount = users.filter((u) => u.status === "ACTIVE").length;
   const adminCount = users.filter((u) => u.role.code === "ADMIN").length;
+  const activeAdminCount = users.filter(
+    (u) => u.role.code === "ADMIN" && u.status === "ACTIVE"
+  ).length;
   const inactiveCount = users.filter(
     (u) => u.status === "INACTIVE" || u.status === "SUSPENDED"
   ).length;
@@ -227,6 +284,17 @@ export default function UsersPage() {
     setIsModalOpen(true);
   };
 
+  const handleOpenDeleteModal = (user: SystemUser) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate(userToDelete.id);
+    }
+  };
+
   const handleFormSubmit = async (
     values: CreateUserFormValues | EditUserFormValues
   ) => {
@@ -245,31 +313,6 @@ export default function UsersPage() {
     } else {
       const createValues = values as CreateUserFormValues;
       await createUserMutation.mutateAsync(createValues);
-    }
-  };
-
-  const handleOpenResetModal = (user: SystemUser) => {
-    setResettingUser(user);
-    setIsResetModalOpen(true);
-  };
-
-  const handleResetSuccess = (userId: string, temporaryPassword: string) => {
-    setTempPasswords((prev) => ({ ...prev, [userId]: temporaryPassword }));
-    showToast("success", "Temporary password generated and active sessions revoked.");
-  };
-
-  const toggleRevealTempPassword = (userId: string) => {
-    setRevealedTempUsers((prev) => ({ ...prev, [userId]: !prev[userId] }));
-  };
-
-  const handleCopyTempPassword = async (userId: string, pass: string) => {
-    try {
-      await navigator.clipboard.writeText(pass);
-      setCopiedUserId(userId);
-      setTimeout(() => setCopiedUserId(null), 2000);
-    } catch {
-      setCopiedUserId(userId);
-      setTimeout(() => setCopiedUserId(null), 2000);
     }
   };
 
@@ -564,7 +607,7 @@ export default function UsersPage() {
             </div>
           ) : filteredUsers.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[900px] text-xs text-left">
+              <table className="w-full min-w-[760px] text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Name</th>
@@ -572,7 +615,6 @@ export default function UsersPage() {
                     <th className="py-3 px-3">Phone</th>
                     <th className="py-3 px-3">Role</th>
                     <th className="py-3 px-3 text-center">Status</th>
-                    <th className="py-3 px-3">Password</th>
                     <th className="py-3 px-3">Joined</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -606,7 +648,7 @@ export default function UsersPage() {
                       <td className="py-3.5 px-3">
                         <a
                           href={`mailto:${user.email}`}
-                          className="flex items-center gap-1.5 text-slate-600 hover:text-brand-600 truncate max-w-[200px]"
+                          className="flex items-center gap-1.5 text-slate-600 hover:text-brand-600 truncate max-w-[220px]"
                           title={user.email}
                         >
                           <Mail className="h-3 w-3 text-slate-400 shrink-0" />
@@ -641,93 +683,6 @@ export default function UsersPage() {
                         {getStatusBadge(user.status)}
                       </td>
 
-                      {/* Password */}
-                      <td className="py-3.5 px-3">
-                        {tempPasswords[user.id] ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/90 rounded-md px-2 py-1 max-w-[170px]">
-                              <span className="font-mono text-xs font-bold text-slate-800 tracking-wider truncate">
-                                {revealedTempUsers[user.id]
-                                  ? tempPasswords[user.id]
-                                  : "••••••••"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleRevealTempPassword(user.id)}
-                                aria-label={
-                                  revealedTempUsers[user.id]
-                                    ? "Hide temporary password"
-                                    : "Show temporary password"
-                                }
-                                title={
-                                  revealedTempUsers[user.id]
-                                    ? "Hide temporary password"
-                                    : "Show temporary password"
-                                }
-                                className="text-amber-700 hover:text-amber-900 p-0.5 rounded transition-colors shrink-0 ml-1"
-                              >
-                                {revealedTempUsers[user.id] ? (
-                                  <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-                                ) : (
-                                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleCopyTempPassword(user.id, tempPasswords[user.id])
-                                }
-                                aria-label="Copy temporary password"
-                                title="Copy temporary password"
-                                className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors shrink-0"
-                              >
-                                {copiedUserId === user.id ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                                )}
-                              </button>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenResetModal(user)}
-                              className="h-7 px-1.5 text-[11px] text-slate-500 hover:text-brand-700 hover:bg-brand-50"
-                              title="Re-issue temporary password"
-                            >
-                              <KeyRound className="h-3.5 w-3.5 text-amber-600" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 text-slate-400 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-1">
-                              <span className="font-mono text-[11px] select-none tracking-widest text-slate-400">
-                                ••••••••
-                              </span>
-                              <button
-                                type="button"
-                                disabled
-                                aria-label="Cryptographic hash cannot be revealed"
-                                title="Stored as cryptographic bcrypt hash and cannot be revealed. Click Reset to issue a temporary password."
-                                className="text-slate-300 cursor-not-allowed p-0.5 rounded"
-                              >
-                                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenResetModal(user)}
-                              className="h-7 px-2 text-[11px] gap-1 text-slate-700 hover:text-brand-700 hover:border-brand-300 hover:bg-brand-50/50"
-                              title="Reset password and issue temporary credential"
-                            >
-                              <KeyRound className="h-3 w-3 text-brand-600" />
-                              <span>Reset</span>
-                            </Button>
-                          </div>
-                        )}
-                      </td>
-
                       {/* Joined */}
                       <td className="py-3.5 px-3 text-slate-500 text-[11px] font-mono">
                         {new Date(user.createdAt).toLocaleDateString("en-IN", {
@@ -738,7 +693,7 @@ export default function UsersPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right space-x-1.5">
+                      <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
                         <Button
                           variant="outline"
                           size="sm"
@@ -761,6 +716,10 @@ export default function UsersPage() {
                                   : "ACTIVE",
                             })
                           }
+                          disabled={
+                            toggleStatusMutation.isPending &&
+                            toggleStatusMutation.variables?.id === user.id
+                          }
                           className={`h-8 px-2 text-xs ${
                             user.status === "ACTIVE"
                               ? "text-slate-500 hover:text-red-600 hover:bg-red-50"
@@ -777,6 +736,26 @@ export default function UsersPage() {
                           ) : (
                             <ToggleLeft className="h-4 w-4 text-slate-400" />
                           )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDeleteModal(user)}
+                          disabled={
+                            deleteUserMutation.isPending ||
+                            user.id === currentUser?.id ||
+                            (user.role.code === "ADMIN" && activeAdminCount <= 1)
+                          }
+                          className="h-8 px-2 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                          title={
+                            user.id === currentUser?.id
+                              ? "You cannot delete your own account"
+                              : user.role.code === "ADMIN" && activeAdminCount <= 1
+                              ? "Cannot delete the last active administrator account"
+                              : "Delete User Account"
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
                         </Button>
                       </td>
                     </tr>
@@ -831,16 +810,136 @@ export default function UsersPage() {
         }
       />
 
-      {/* Secure Password Reset Modal */}
-      <ResetPasswordModal
-        isOpen={isResetModalOpen}
-        onClose={() => {
-          setIsResetModalOpen(false);
-          setResettingUser(null);
+      {/* Delete User Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteModalOpen}
+        onOpenChange={(open) => {
+          setIsDeleteModalOpen(open);
+          if (!open) setUserToDelete(null);
         }}
-        user={resettingUser}
-        onSuccess={handleResetSuccess}
+        title="Delete User Account"
+        variant="destructive"
+        confirmLabel="Delete User"
+        cancelLabel="Cancel"
+        isLoading={deleteUserMutation.isPending}
+        onConfirm={handleDeleteConfirm}
+        description={
+          userToDelete ? (
+            <div className="space-y-2 text-xs text-slate-600">
+              <p>
+                Are you sure you want to delete user account{" "}
+                <strong className="text-slate-900 font-semibold">
+                  {userToDelete.firstName} {userToDelete.lastName}
+                </strong>{" "}
+                (<span className="font-mono text-slate-700">{userToDelete.email}</span>)?
+              </p>
+              <p className="text-[11px] leading-relaxed text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                <strong>Important:</strong> This is a permanent administrative action. If this user has recorded historical stock transactions, production orders, or audit records, their account will be safely deactivated instead of permanently deleted to preserve business audit history.
+              </p>
+            </div>
+          ) : null
+        }
       />
+
+      {/* Safe Deactivation Notice Dialog */}
+      <Dialog
+        open={Boolean(deactivatedNotice)}
+        onOpenChange={(open) => !open && setDeactivatedNotice(null)}
+      >
+        <DialogContent className="max-w-[460px] p-5 sm:p-6 w-full">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-900">
+                  Account Safely Deactivated
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                  Business traceability records preserved
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2 text-xs text-slate-600">
+            <p className="leading-relaxed">
+              User{" "}
+              <strong className="text-slate-900">
+                {deactivatedNotice?.user.firstName} {deactivatedNotice?.user.lastName}
+              </strong>{" "}
+              could not be permanently deleted because they have associated historical records in the system.
+            </p>
+
+            {deactivatedNotice?.references && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5">
+                <p className="font-semibold text-slate-800 text-[11px] uppercase tracking-wider">
+                  Preserved Business References:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  {(deactivatedNotice.references.transactions ?? 0) > 0 && (
+                    <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800">
+                        {deactivatedNotice.references.transactions}
+                      </span>{" "}
+                      Stock Transactions
+                    </div>
+                  )}
+                  {(deactivatedNotice.references.productionOrders ?? 0) > 0 && (
+                    <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800">
+                        {deactivatedNotice.references.productionOrders}
+                      </span>{" "}
+                      Production Orders
+                    </div>
+                  )}
+                  {(deactivatedNotice.references.allocations ?? 0) > 0 && (
+                    <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800">
+                        {deactivatedNotice.references.allocations}
+                      </span>{" "}
+                      Yarn Allocations
+                    </div>
+                  )}
+                  {(deactivatedNotice.references.consumptions ?? 0) > 0 && (
+                    <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800">
+                        {deactivatedNotice.references.consumptions}
+                      </span>{" "}
+                      Consumption Records
+                    </div>
+                  )}
+                  {(deactivatedNotice.references.auditLogs ?? 0) > 0 && (
+                    <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                      <span className="font-bold text-slate-800">
+                        {deactivatedNotice.references.auditLogs}
+                      </span>{" "}
+                      Audit Logs
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              The user account has been deactivated (status: Inactive), and all active sessions have been invalidated.
+              Historical inventory transactions and audit logs remain intact.
+            </p>
+          </div>
+
+          <DialogFooter className="mt-5">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setDeactivatedNotice(null)}
+              className="w-full sm:w-auto h-9 px-5 text-xs font-semibold"
+            >
+              Understood
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

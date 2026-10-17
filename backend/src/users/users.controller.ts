@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -124,6 +125,24 @@ export class UsersController {
   ) {
     const adminUserId = req.user?.id;
     const data = await this.usersService.resetPassword(id, dto, adminUserId);
+    return {
+      message: data.message,
+      data,
+    };
+  }
+
+  @Delete(':id')
+  @RequirePermission('manage_users')
+  @ApiOperation({ summary: 'Delete or safely deactivate a user account (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User deleted or safely deactivated' })
+  @ApiResponse({ status: 400, description: 'Self-deletion or last administrator deletion blocked' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async delete(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const adminUserId = req.user?.id;
+    const data = await this.usersService.delete(id, adminUserId);
     return {
       message: data.message,
       data,
