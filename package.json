@@ -35,5 +35,8 @@
     "postgresql"
   ],
   "author": "YarnTrace Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "typescript": "^5.7.3"
+  }
 }
