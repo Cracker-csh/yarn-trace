@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   UserCog,
   Plus,
@@ -95,7 +95,8 @@ export default function UsersPage() {
       const res = await apiClient.get("/users");
       return res.data.data;
     },
-    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
   // ---------------------------------------------------------------------------

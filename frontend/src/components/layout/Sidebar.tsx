@@ -59,6 +59,7 @@ export default function Sidebar({ isMobile = false, onMobileClose }: SidebarProp
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 onClick={() => {
                   if (isMobile && onMobileClose) {
                     onMobileClose();

@@ -1334,133 +1334,140 @@ export class InventoryService {
   // 10. GET TRANSACTIONS (PAGINATED & FILTERED LEDGER)
   // ---------------------------------------------------------------------------
   async getTransactions(filter: InventoryFilterDto = {}) {
-    const where: Prisma.TransactionWhereInput = {};
+    const cacheKey = `inventory:transactions:${JSON.stringify(filter)}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.TransactionWhereInput = {};
 
-    if (filter.search && filter.search.trim()) {
-      const q = filter.search.trim();
-      where.OR = [
-        { transactionNumber: { contains: q, mode: 'insensitive' } },
-        { yarnCount: { contains: q, mode: 'insensitive' } },
-        { poNumber: { contains: q, mode: 'insensitive' } },
-        { purpose: { contains: q, mode: 'insensitive' } },
-        { lot: { lotNumber: { contains: q, mode: 'insensitive' } } },
-        { party: { name: { contains: q, mode: 'insensitive' } } },
-      ];
-    }
+        if (filter.search && filter.search.trim()) {
+          const q = filter.search.trim();
+          where.OR = [
+            { transactionNumber: { contains: q, mode: 'insensitive' } },
+            { yarnCount: { contains: q, mode: 'insensitive' } },
+            { poNumber: { contains: q, mode: 'insensitive' } },
+            { purpose: { contains: q, mode: 'insensitive' } },
+            { lot: { lotNumber: { contains: q, mode: 'insensitive' } } },
+            { party: { name: { contains: q, mode: 'insensitive' } } },
+          ];
+        }
 
-    if (filter.count && filter.count.trim()) {
-      where.yarnCount = { contains: filter.count.trim(), mode: 'insensitive' };
-    }
+        if (filter.count && filter.count.trim()) {
+          where.yarnCount = { contains: filter.count.trim(), mode: 'insensitive' };
+        }
 
-    if (filter.partyId && filter.partyId.trim()) {
-      where.partyId = filter.partyId.trim();
-    }
+        if (filter.partyId && filter.partyId.trim()) {
+          where.partyId = filter.partyId.trim();
+        }
 
-    if (filter.lotNumber && filter.lotNumber.trim()) {
-      where.lot = { lotNumber: { contains: filter.lotNumber.trim(), mode: 'insensitive' } };
-    }
+        if (filter.lotNumber && filter.lotNumber.trim()) {
+          where.lot = { lotNumber: { contains: filter.lotNumber.trim(), mode: 'insensitive' } };
+        }
 
-    if (filter.type) {
-      where.type = filter.type;
-    }
+        if (filter.type) {
+          where.type = filter.type;
+        }
 
-    if (filter.purpose && filter.purpose.trim()) {
-      where.purpose = { contains: filter.purpose.trim(), mode: 'insensitive' };
-    }
+        if (filter.purpose && filter.purpose.trim()) {
+          where.purpose = { contains: filter.purpose.trim(), mode: 'insensitive' };
+        }
 
-    if (filter.poNumber && filter.poNumber.trim()) {
-      where.poNumber = { contains: filter.poNumber.trim(), mode: 'insensitive' };
-    }
+        if (filter.poNumber && filter.poNumber.trim()) {
+          where.poNumber = { contains: filter.poNumber.trim(), mode: 'insensitive' };
+        }
 
-    if (filter.startDate || filter.endDate) {
-      where.transactionDate = {};
-      if (filter.startDate) {
-        where.transactionDate.gte = new Date(filter.startDate);
-      }
-      if (filter.endDate) {
-        const end = new Date(filter.endDate);
-        end.setHours(23, 59, 59, 999);
-        where.transactionDate.lte = end;
-      }
-    }
+        if (filter.startDate || filter.endDate) {
+          where.transactionDate = {};
+          if (filter.startDate) {
+            where.transactionDate.gte = new Date(filter.startDate);
+          }
+          if (filter.endDate) {
+            const end = new Date(filter.endDate);
+            end.setHours(23, 59, 59, 999);
+            where.transactionDate.lte = end;
+          }
+        }
 
-    const page = filter.page || 1;
-    const limit = filter.limit || 50;
-    const skip = (page - 1) * limit;
+        const page = filter.page || 1;
+        const limit = filter.limit || 50;
+        const skip = (page - 1) * limit;
 
-    const [total, items] = await Promise.all([
-      this.prisma.transaction.count({ where }),
-      this.prisma.transaction.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { transactionDate: 'desc' },
-        include: {
-          party: true,
-          lot: true,
-          referenceTransaction: true,
-          referencedBy: {
-            where: { type: TransactionType.CORRECTION },
-            select: { id: true },
-          },
-          createdBy: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
+        const [total, items] = await Promise.all([
+          this.prisma.transaction.count({ where }),
+          this.prisma.transaction.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy: { transactionDate: 'desc' },
+            include: {
+              party: true,
+              lot: true,
+              referenceTransaction: true,
+              referencedBy: {
+                where: { type: TransactionType.CORRECTION },
+                select: { id: true },
+              },
+              createdBy: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
             },
+          }),
+        ]);
+
+        const formatted = items.map((tx) => ({
+          id: tx.id,
+          transactionNumber: tx.transactionNumber,
+          transactionDate: tx.transactionDate,
+          type: tx.type,
+          status: tx.status,
+          count: tx.yarnCount || (tx.lot ? tx.lot.yarnCount : '—'),
+          party: tx.party
+            ? {
+                id: tx.party.id,
+                name: tx.party.name,
+                code: tx.party.code,
+                contactPerson: tx.party.contactPerson || null,
+                phone: tx.party.phone || null,
+                email: tx.party.email || null,
+              }
+            : null,
+          lotNumber: tx.lot ? tx.lot.lotNumber : '—',
+          bags: tx.bags,
+          kilos: Number(tx.kilos.toFixed(4)),
+          poNumber: tx.poNumber || null,
+          purpose: tx.purpose || null,
+          referenceNumber: tx.referenceNumber || null,
+          referenceTransaction: tx.referenceTransaction
+            ? {
+                id: tx.referenceTransaction.id,
+                transactionNumber: tx.referenceTransaction.transactionNumber,
+                type: tx.referenceTransaction.type,
+              }
+            : null,
+          correctionReason: tx.correctionReason || null,
+          isCorrected: tx.referencedBy && tx.referencedBy.length > 0,
+          notes: tx.notes || null,
+          createdBy: tx.createdBy ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}` : 'System',
+          createdAt: tx.createdAt,
+        }));
+
+        return {
+          items: formatted,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
           },
-        },
-      }),
-    ]);
-
-    const formatted = items.map((tx) => ({
-      id: tx.id,
-      transactionNumber: tx.transactionNumber,
-      transactionDate: tx.transactionDate,
-      type: tx.type,
-      status: tx.status,
-      count: tx.yarnCount || (tx.lot ? tx.lot.yarnCount : '—'),
-      party: tx.party
-        ? {
-            id: tx.party.id,
-            name: tx.party.name,
-            code: tx.party.code,
-            contactPerson: tx.party.contactPerson || null,
-            phone: tx.party.phone || null,
-            email: tx.party.email || null,
-          }
-        : null,
-      lotNumber: tx.lot ? tx.lot.lotNumber : '—',
-      bags: tx.bags,
-      kilos: Number(tx.kilos.toFixed(4)),
-      poNumber: tx.poNumber || null,
-      purpose: tx.purpose || null,
-      referenceNumber: tx.referenceNumber || null,
-      referenceTransaction: tx.referenceTransaction
-        ? {
-            id: tx.referenceTransaction.id,
-            transactionNumber: tx.referenceTransaction.transactionNumber,
-            type: tx.referenceTransaction.type,
-          }
-        : null,
-      correctionReason: tx.correctionReason || null,
-      isCorrected: tx.referencedBy && tx.referencedBy.length > 0,
-      notes: tx.notes || null,
-      createdBy: tx.createdBy ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}` : 'System',
-      createdAt: tx.createdAt,
-    }));
-
-    return {
-      items: formatted,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        };
       },
-    };
+      20,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -1533,55 +1540,62 @@ export class InventoryService {
   // 12. GET ACTIVE PO REQUIREMENTS (FOR AUTOCOMPLETE & 103% PO RULES)
   // ---------------------------------------------------------------------------
   async getPoRequirements(poNumber?: string, includeArchived: boolean = false) {
-    const where: Prisma.PORequirementWhereInput = {
-      purchaseOrder: {
-        status: { not: POStatus.CANCELLED },
+    const cacheKey = `inventory:po-requirements:${poNumber || 'all'}:${includeArchived}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.PORequirementWhereInput = {
+          purchaseOrder: {
+            status: { not: POStatus.CANCELLED },
+          },
+        };
+
+        if (!includeArchived) {
+          where.isArchived = false;
+          where.isActive = true;
+        }
+
+        if (poNumber && poNumber.trim()) {
+          where.OR = [
+            { poNumber: { contains: poNumber.trim(), mode: 'insensitive' } },
+            { purchaseOrder: { poNumber: { contains: poNumber.trim(), mode: 'insensitive' } } },
+          ];
+        }
+
+        const requirements = await this.prisma.pORequirement.findMany({
+          where,
+          include: {
+            purchaseOrder: {
+              include: { party: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        });
+
+        return requirements.map((r) => {
+          const reqKg = Number(r.requiredKg);
+          const issuedKg = Number(r.issuedKg);
+          const ceilingKg = Number((reqKg * 1.03).toFixed(4));
+          const remainingEligibleKg = Number(Math.max(0, ceilingKg - issuedKg).toFixed(4));
+
+          return {
+            id: r.id,
+            poNumber: r.poNumber || r.purchaseOrder?.poNumber || '—',
+            yarnCount: r.yarnCount || '—',
+            purpose: r.purpose || '—',
+            party: r.purchaseOrder?.party ? { name: r.purchaseOrder.party.name } : null,
+            requiredKg: reqKg,
+            issuedKg: issuedKg,
+            ceiling103Kg: ceilingKg,
+            remainingEligibleKg: remainingEligibleKg,
+            isCeilingReached: issuedKg >= ceilingKg,
+            isActive: r.isActive,
+            isArchived: r.isArchived,
+          };
+        });
       },
-    };
-
-    if (!includeArchived) {
-      where.isArchived = false;
-      where.isActive = true;
-    }
-
-    if (poNumber && poNumber.trim()) {
-      where.OR = [
-        { poNumber: { contains: poNumber.trim(), mode: 'insensitive' } },
-        { purchaseOrder: { poNumber: { contains: poNumber.trim(), mode: 'insensitive' } } },
-      ];
-    }
-
-    const requirements = await this.prisma.pORequirement.findMany({
-      where,
-      include: {
-        purchaseOrder: {
-          include: { party: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    return requirements.map((r) => {
-      const reqKg = Number(r.requiredKg);
-      const issuedKg = Number(r.issuedKg);
-      const ceilingKg = Number((reqKg * 1.03).toFixed(4));
-      const remainingEligibleKg = Number(Math.max(0, ceilingKg - issuedKg).toFixed(4));
-
-      return {
-        id: r.id,
-        poNumber: r.poNumber || r.purchaseOrder?.poNumber || '—',
-        yarnCount: r.yarnCount || '—',
-        purpose: r.purpose || '—',
-        party: r.purchaseOrder?.party ? { name: r.purchaseOrder.party.name } : null,
-        requiredKg: reqKg,
-        issuedKg: issuedKg,
-        ceiling103Kg: ceilingKg,
-        remainingEligibleKg: remainingEligibleKg,
-        isCeilingReached: issuedKg >= ceilingKg,
-        isActive: r.isActive,
-        isArchived: r.isArchived,
-      };
-    });
+      30,
+    );
   }
 }

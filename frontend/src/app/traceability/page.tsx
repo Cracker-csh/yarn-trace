@@ -131,6 +131,7 @@ function TraceabilityContent() {
     },
     enabled: !!activeQuery.trim(),
     retry: false,
+    staleTime: 60_000,
   });
 
   // Form search submission

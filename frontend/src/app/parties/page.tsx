@@ -1,7 +1,7 @@
     "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Building2,
   Plus,
@@ -81,7 +81,8 @@ export default function PartiesPage() {
       });
       return res.data.data;
     },
-    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
 
   // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Boxes,
   Plus,
@@ -129,6 +129,7 @@ export default function InventoryPage() {
       return res.data.data;
     },
     enabled: activeTab === "lots" || activeTab === "counts",
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 
@@ -143,6 +144,7 @@ export default function InventoryPage() {
       return res.data.data;
     },
     enabled: activeTab === "transactions",
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 
