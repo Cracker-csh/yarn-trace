@@ -14,11 +14,29 @@ import { RetireStockDto } from './dto/retire-stock.dto';
 import { SellStockDto } from './dto/sell-stock.dto';
 import { CorrectionDto } from './dto/correction.dto';
 import { InventoryFilterDto } from './dto/inventory-filter.dto';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import * as XLSX from 'xlsx';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
+
+  public invalidateInventoryCaches() {
+    this.cacheService.delPattern(/^inventory/);
+    this.cacheService.delPattern(/^dashboard/);
+    this.cacheService.delPattern(/^reports/);
+  }
+
+  private async executeInventoryMutation<T>(
+    mutationFn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const result = await this.prisma.$transaction(mutationFn);
+    this.invalidateInventoryCaches();
+    return result;
+  }
 
   // Helper to generate unique sequential transaction numbers
   private generateTxNumber(typePrefix: string): string {
@@ -69,7 +87,7 @@ export class InventoryService {
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
     const kgDecimal = new Prisma.Decimal(dto.kilos);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // Find existing Lot
@@ -187,7 +205,7 @@ export class InventoryService {
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
     const kgDecimal = new Prisma.Decimal(dto.kilos);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // Verify parent lot if dyeing lineage is specified
@@ -320,7 +338,7 @@ export class InventoryService {
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
     const kgDecimal = new Prisma.Decimal(dto.kilos);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // 1. Validate Lot exists and has sufficient stock
@@ -572,7 +590,7 @@ export class InventoryService {
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
     const kgDecimal = new Prisma.Decimal(dto.kilos);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // Increment Lot balance
@@ -707,7 +725,7 @@ export class InventoryService {
 
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       const newWeight = Prisma.Decimal.sub(lot.currentWeightKg, kgDecimal);
@@ -834,7 +852,7 @@ export class InventoryService {
 
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       const newWeight = Prisma.Decimal.sub(lot.currentWeightKg, kgDecimal);
@@ -960,7 +978,7 @@ export class InventoryService {
         `Transaction ${origTx.transactionNumber} has already been corrected.`,
       );
     }
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeInventoryMutation(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // 1. Calculate reversal impact on Lot balance
@@ -1149,154 +1167,167 @@ export class InventoryService {
   // 8. GET STOCK SUMMARY (KPI METRICS) - HIGH-PERFORMANCE POSTGRESQL AGGREGATION
   // ---------------------------------------------------------------------------
   async getStockSummary() {
-    const [lotAgg, activeLotsCount, totalParties, totalTransactions, recentTransactions] =
-      await Promise.all([
-        // Database-level sum of current lot balances
-        this.prisma.lot.aggregate({
-          _sum: {
-            currentWeightKg: true,
-            currentBags: true,
-          },
-        }),
-        // Count of lots with positive balance
-        this.prisma.lot.count({
-          where: { currentWeightKg: { gt: 0 } },
-        }),
-        // Active parties count
-        this.prisma.party.count({
-          where: { isActive: true },
-        }),
-        // Total transactions count
-        this.prisma.transaction.count(),
-        // 5 most recent transactions with selective fields
-        this.prisma.transaction.findMany({
-          take: 5,
-          orderBy: { transactionDate: 'desc' },
-          select: {
-            id: true,
-            transactionNumber: true,
-            transactionDate: true,
-            type: true,
-            yarnCount: true,
-            bags: true,
-            kilos: true,
-            lot: { select: { lotNumber: true } },
-            party: { select: { name: true } },
-          },
-        }),
-      ]);
+    return this.cacheService.getOrSet(
+      'inventory:stock-summary',
+      async () => {
+        const [lotAgg, activeLotsCount, totalParties, totalTransactions, recentTransactions] =
+          await Promise.all([
+            // Database-level sum of current lot balances
+            this.prisma.lot.aggregate({
+              _sum: {
+                currentWeightKg: true,
+                currentBags: true,
+              },
+            }),
+            // Count of lots with positive balance
+            this.prisma.lot.count({
+              where: { currentWeightKg: { gt: 0 } },
+            }),
+            // Active parties count
+            this.prisma.party.count({
+              where: { isActive: true },
+            }),
+            // Total transactions count
+            this.prisma.transaction.count(),
+            // 5 most recent transactions with selective fields
+            this.prisma.transaction.findMany({
+              take: 5,
+              orderBy: { transactionDate: 'desc' },
+              select: {
+                id: true,
+                transactionNumber: true,
+                transactionDate: true,
+                type: true,
+                yarnCount: true,
+                bags: true,
+                kilos: true,
+                lot: { select: { lotNumber: true } },
+                party: { select: { name: true } },
+              },
+            }),
+          ]);
 
-    const totalWeightKg = Number(Number(lotAgg._sum.currentWeightKg || 0).toFixed(4));
-    const totalBags = lotAgg._sum.currentBags || 0;
+        const totalWeightKg = Number(Number(lotAgg._sum.currentWeightKg || 0).toFixed(4));
+        const totalBags = lotAgg._sum.currentBags || 0;
 
-    return {
-      totalWeightKg,
-      totalBags,
-      activeLotsCount,
-      totalParties,
-      totalTransactions,
-      recentTransactions,
-    };
+        return {
+          totalWeightKg,
+          totalBags,
+          activeLotsCount,
+          totalParties,
+          totalTransactions,
+          recentTransactions,
+        };
+      },
+      30,
+    );
   }
 
   // ---------------------------------------------------------------------------
   // 9. GET LOTS (DERIVED LOT-WISE STOCK)
   // ---------------------------------------------------------------------------
   async getLots(filter: InventoryFilterDto = {}) {
-    const where: Prisma.LotWhereInput = {};
+    const cacheKey = `inventory:lots:${JSON.stringify(filter)}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.LotWhereInput = {};
 
-    if (filter.search && filter.search.trim()) {
-      const query = filter.search.trim();
-      where.OR = [
-        { lotNumber: { contains: query, mode: 'insensitive' } },
-        { yarnCount: { contains: query, mode: 'insensitive' } },
-        { supplier: { name: { contains: query, mode: 'insensitive' } } },
-        { millLotNumber: { contains: query, mode: 'insensitive' } },
-      ];
-    }
-
-    if (filter.count && filter.count.trim()) {
-      where.yarnCount = { contains: filter.count.trim(), mode: 'insensitive' };
-    }
-
-    if (filter.partyId && filter.partyId.trim()) {
-      where.supplierId = filter.partyId.trim();
-    }
-
-    if (filter.lotNumber && filter.lotNumber.trim()) {
-      where.lotNumber = { contains: filter.lotNumber.trim(), mode: 'insensitive' };
-    }
-
-    const lots = await this.prisma.lot.findMany({
-      where,
-      include: {
-        supplier: true,
-        parentLot: true,
-      },
-      orderBy: { receivedDate: 'desc' },
-    });
-
-    const lotIds = lots.map((l) => l.id);
-    const aggregates =
-      lotIds.length > 0
-        ? await this.prisma.transaction.groupBy({
-            by: ['lotId', 'type'],
-            where: { lotId: { in: lotIds } },
-            _sum: { kilos: true },
-          })
-        : [];
-
-    const aggMap = new Map<string, Record<string, number>>();
-    for (const agg of aggregates) {
-      if (agg.lotId) {
-        if (!aggMap.has(agg.lotId)) {
-          aggMap.set(agg.lotId, {});
+        if (filter.search && filter.search.trim()) {
+          const query = filter.search.trim();
+          where.OR = [
+            { lotNumber: { contains: query, mode: 'insensitive' } },
+            { yarnCount: { contains: query, mode: 'insensitive' } },
+            { supplier: { name: { contains: query, mode: 'insensitive' } } },
+            { millLotNumber: { contains: query, mode: 'insensitive' } },
+          ];
         }
-        aggMap.get(agg.lotId)![agg.type] = Number(agg._sum.kilos || 0);
-      }
-    }
 
-    return lots.map((lot) => {
-      const lotAgg = aggMap.get(lot.id) || {};
-      const totalInKg =
-        (lotAgg[TransactionType.OPENING] || 0) + (lotAgg[TransactionType.RECEIVED] || 0);
-      const totalIssuedKg = lotAgg[TransactionType.ISSUED] || 0;
-      const totalReturnedKg = lotAgg[TransactionType.RETURN] || 0;
-      const totalRetiredKg = lotAgg[TransactionType.RETIRED] || 0;
-      const totalSoldKg = lotAgg[TransactionType.SOLD] || 0;
+        if (filter.count && filter.count.trim()) {
+          where.yarnCount = { contains: filter.count.trim(), mode: 'insensitive' };
+        }
 
-      return {
-        id: lot.id,
-        lotNumber: lot.lotNumber,
-        count: lot.yarnCount || '1/10 KW',
-        party: lot.supplier
-          ? {
-              id: lot.supplier.id,
-              name: lot.supplier.name,
-              code: lot.supplier.code,
-              contactPerson: lot.supplier.contactPerson || null,
-              phone: lot.supplier.phone || null,
-              email: lot.supplier.email || null,
+        if (filter.partyId && filter.partyId.trim()) {
+          where.supplierId = filter.partyId.trim();
+        }
+
+        if (filter.lotNumber && filter.lotNumber.trim()) {
+          where.lotNumber = { contains: filter.lotNumber.trim(), mode: 'insensitive' };
+        }
+
+        const lots = await this.prisma.lot.findMany({
+          where,
+          include: {
+            supplier: true,
+            parentLot: true,
+          },
+          orderBy: { receivedDate: 'desc' },
+        });
+
+        const lotIds = lots.map((l) => l.id);
+        const aggregates =
+          lotIds.length > 0
+            ? await this.prisma.transaction.groupBy({
+                by: ['lotId', 'type'],
+                where: { lotId: { in: lotIds } },
+                _sum: { kilos: true },
+              })
+            : [];
+
+        const aggMap = new Map<string, Record<string, number>>();
+        for (const agg of aggregates) {
+          if (agg.lotId) {
+            if (!aggMap.has(agg.lotId)) {
+              aggMap.set(agg.lotId, {});
             }
-          : null,
-        parentLot: lot.parentLot
-          ? { id: lot.parentLot.id, lotNumber: lot.parentLot.lotNumber }
-          : null,
-        initialWeightKg: Number(lot.initialWeightKg.toFixed(4)),
-        initialBags: lot.initialBags,
-        totalInKg: Number(totalInKg.toFixed(4)),
-        totalIssuedKg: Number(totalIssuedKg.toFixed(4)),
-        totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
-        totalRetiredKg: Number(totalRetiredKg.toFixed(4)),
-        totalSoldKg: Number(totalSoldKg.toFixed(4)),
-        currentWeightKg: Number(lot.currentWeightKg.toFixed(4)),
-        currentBags: lot.currentBags,
-        status: lot.status,
-        millLotNumber: lot.millLotNumber,
-        shadeCode: lot.shadeCode,
-        receivedDate: lot.receivedDate,
-      };
-    });
+            aggMap.get(agg.lotId)![agg.type] = Number(agg._sum.kilos || 0);
+          }
+        }
+
+        return lots.map((lot) => {
+          const lotAgg = aggMap.get(lot.id) || {};
+          const totalInKg =
+            (lotAgg[TransactionType.OPENING] || 0) + (lotAgg[TransactionType.RECEIVED] || 0);
+          const totalIssuedKg = lotAgg[TransactionType.ISSUED] || 0;
+          const totalReturnedKg = lotAgg[TransactionType.RETURN] || 0;
+          const totalRetiredKg = lotAgg[TransactionType.RETIRED] || 0;
+          const totalSoldKg = lotAgg[TransactionType.SOLD] || 0;
+
+          return {
+            id: lot.id,
+            lotNumber: lot.lotNumber,
+            count: lot.yarnCount || '1/10 KW',
+            party: lot.supplier
+              ? {
+                  id: lot.supplier.id,
+                  name: lot.supplier.name,
+                  code: lot.supplier.code,
+                  contactPerson: lot.supplier.contactPerson || null,
+                  phone: lot.supplier.phone || null,
+                  email: lot.supplier.email || null,
+                }
+              : null,
+            parentLot: lot.parentLot
+              ? { id: lot.parentLot.id, lotNumber: lot.parentLot.lotNumber }
+              : null,
+            initialWeightKg: Number(lot.initialWeightKg.toFixed(4)),
+            initialBags: lot.initialBags,
+            totalInKg: Number(totalInKg.toFixed(4)),
+            totalIssuedKg: Number(totalIssuedKg.toFixed(4)),
+            totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
+            totalRetiredKg: Number(totalRetiredKg.toFixed(4)),
+            totalSoldKg: Number(totalSoldKg.toFixed(4)),
+            currentWeightKg: Number(lot.currentWeightKg.toFixed(4)),
+            currentBags: lot.currentBags,
+            status: lot.status,
+            millLotNumber: lot.millLotNumber,
+            shadeCode: lot.shadeCode,
+            receivedDate: lot.receivedDate,
+          };
+        });
+      },
+      20,
+    );
   }
 
   // ---------------------------------------------------------------------------

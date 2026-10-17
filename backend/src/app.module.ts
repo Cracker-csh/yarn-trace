@@ -19,9 +19,11 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { TraceabilityModule } from './traceability/traceability.module';
 import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AppCacheModule } from './common/cache/app-cache.module';
 
 @Module({
   imports: [
+    AppCacheModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],

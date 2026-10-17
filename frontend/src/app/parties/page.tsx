@@ -35,8 +35,10 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
+import dynamic from "next/dynamic";
 import { Party } from "../../types/inventory";
-import PartyModal, { PartyFormValues } from "../../components/parties/PartyModal";
+import type { PartyFormValues } from "../../components/parties/PartyModal";
+const PartyModal = dynamic(() => import("../../components/parties/PartyModal"), { ssr: false });
 
 export default function PartiesPage() {
   const queryClient = useQueryClient();

@@ -40,12 +40,14 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
+import dynamic from "next/dynamic";
 import { SystemUser, RoleListItem } from "../../types/governance";
-import UserModal, {
+import type {
   CreateUserFormValues,
   EditUserFormValues,
 } from "../../components/governance/UserModal";
-import ResetPasswordModal from "../../components/governance/ResetPasswordModal";
+const UserModal = dynamic(() => import("../../components/governance/UserModal"), { ssr: false });
+const ResetPasswordModal = dynamic(() => import("../../components/governance/ResetPasswordModal"), { ssr: false });
 
 export default function UsersPage() {
   const queryClient = useQueryClient();

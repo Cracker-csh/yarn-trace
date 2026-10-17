@@ -106,6 +106,7 @@ export default function ProductsPage() {
       const res = await apiClient.get("/products", { params });
       return res.data.data;
     },
+    staleTime: 60_000,
   });
 
   const outputBatches = data?.outputBatches || [];

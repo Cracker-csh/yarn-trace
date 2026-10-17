@@ -31,12 +31,12 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { apiClient } from "../../lib/axios";
 import dynamic from "next/dynamic";
 import { RoleListItem, PermissionItem } from "../../types/governance";
-import PermissionManager from "../../components/governance/PermissionManager";
 import type {
   CreateRoleFormValues,
   EditRoleFormValues,
 } from "../../components/governance/RoleModal";
 const RoleModal = dynamic(() => import("../../components/governance/RoleModal"), { ssr: false });
+const PermissionManager = dynamic(() => import("../../components/governance/PermissionManager"), { ssr: false });
 
 export default function RolesPermissionsPage() {
   const queryClient = useQueryClient();

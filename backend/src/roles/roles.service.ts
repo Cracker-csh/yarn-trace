@@ -10,26 +10,38 @@ import { AuditService } from '../audit/audit.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
+import { AppCacheService } from '../common/cache/app-cache.service';
 
 @Injectable()
 export class RolesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly cacheService: AppCacheService,
   ) {}
 
+  public invalidateRolesCaches() {
+    this.cacheService.delPattern(/^roles/);
+  }
+
   async findAll() {
-    return this.prisma.role.findMany({
-      include: {
-        rolePermissions: {
-          include: { permission: true },
-        },
-        _count: {
-          select: { users: true },
-        },
+    return this.cacheService.getOrSet(
+      'roles:all',
+      async () => {
+        return this.prisma.role.findMany({
+          include: {
+            rolePermissions: {
+              include: { permission: true },
+            },
+            _count: {
+              select: { users: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
       },
-      orderBy: { name: 'asc' },
-    });
+      120,
+    );
   }
 
   async findOne(id: string) {
@@ -95,6 +107,7 @@ export class RolesService {
       newValue: { name: role.name, code: role.code, description: role.description },
     });
 
+    this.invalidateRolesCaches();
     return role;
   }
 
@@ -160,6 +173,7 @@ export class RolesService {
       });
     }
 
+    this.invalidateRolesCaches();
     return role;
   }
 
@@ -200,6 +214,7 @@ export class RolesService {
       oldValue: { name: existing.name, code: existing.code },
     });
 
+    this.invalidateRolesCaches();
     return { message: `Role "${existing.name}" deleted successfully` };
   }
 
@@ -280,6 +295,7 @@ export class RolesService {
       metadata: { roleCode: role.code, roleName: role.name },
     });
 
+    this.invalidateRolesCaches();
     // Return the updated role
     return this.findOne(id);
   }

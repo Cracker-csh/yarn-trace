@@ -22,10 +22,21 @@ import { CorrectConsumptionDto } from './dto/correct-consumption.dto';
 import { RecordProductionReturnDto } from './dto/record-return.dto';
 import { RecordProductionOutputDto } from './dto/record-output.dto';
 import { ProductionFilterDto } from './dto/production-filter.dto';
+import { AppCacheService } from '../common/cache/app-cache.service';
 
 @Injectable()
 export class ProductionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: AppCacheService,
+  ) {}
+
+  public invalidateProductionCaches() {
+    this.cacheService.delPattern(/^production/);
+    this.cacheService.delPattern(/^dashboard/);
+    this.cacheService.delPattern(/^reports/);
+    this.cacheService.delPattern(/^inventory/);
+  }
 
   // Helper to generate unique sequential Work Order numbers (e.g., WO-2026-0001)
   private async generateWorkOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
@@ -87,58 +98,65 @@ export class ProductionService {
   // ===========================================================================
 
   async getTeams(includeInactive = false) {
-    const where: Prisma.ProductionTeamWhereInput = includeInactive ? {} : { isActive: true };
+    const cacheKey = `production:teams:${includeInactive}`;
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Prisma.ProductionTeamWhereInput = includeInactive ? {} : { isActive: true };
 
-    const teams = await this.prisma.productionTeam.findMany({
-      where,
-      include: {
-        orders: {
-          select: { id: true, status: true },
-        },
-        allocations: {
-          select: { allocatedKg: true },
-        },
-        consumptionRecords: {
-          where: { isCorrected: false },
-          select: { consumedKg: true, wasteKg: true },
-        },
-        returns: {
-          select: { returnedKg: true },
-        },
+        const teams = await this.prisma.productionTeam.findMany({
+          where,
+          include: {
+            orders: {
+              select: { id: true, status: true },
+            },
+            allocations: {
+              select: { allocatedKg: true },
+            },
+            consumptionRecords: {
+              where: { isCorrected: false },
+              select: { consumedKg: true, wasteKg: true },
+            },
+            returns: {
+              select: { returnedKg: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        return teams.map((team) => {
+          const activeOrdersCount = team.orders.filter(
+            (o) => o.status === ProductionOrderStatus.PLANNED || o.status === ProductionOrderStatus.IN_PROGRESS,
+          ).length;
+
+          const totalAllocatedKg = team.allocations.reduce((acc, a) => acc + Number(a.allocatedKg), 0);
+          const totalConsumedKg = team.consumptionRecords.reduce(
+            (acc, c) => acc + Number(c.consumedKg) + Number(c.wasteKg),
+            0,
+          );
+          const totalReturnedKg = team.returns.reduce((acc, r) => acc + Number(r.returnedKg), 0);
+          const currentStockKg = Math.max(0, totalAllocatedKg - totalConsumedKg - totalReturnedKg);
+
+          return {
+            id: team.id,
+            code: team.code,
+            name: team.name,
+            department: team.department,
+            teamLead: team.teamLead,
+            remarks: team.remarks,
+            isActive: team.isActive,
+            activeOrdersCount,
+            totalAllocatedKg: Number(totalAllocatedKg.toFixed(4)),
+            totalConsumedKg: Number(totalConsumedKg.toFixed(4)),
+            totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
+            currentStockKg: Number(currentStockKg.toFixed(4)),
+            createdAt: team.createdAt,
+            updatedAt: team.updatedAt,
+          };
+        });
       },
-      orderBy: { name: 'asc' },
-    });
-
-    return teams.map((team) => {
-      const activeOrdersCount = team.orders.filter(
-        (o) => o.status === ProductionOrderStatus.PLANNED || o.status === ProductionOrderStatus.IN_PROGRESS,
-      ).length;
-
-      const totalAllocatedKg = team.allocations.reduce((acc, a) => acc + Number(a.allocatedKg), 0);
-      const totalConsumedKg = team.consumptionRecords.reduce(
-        (acc, c) => acc + Number(c.consumedKg) + Number(c.wasteKg),
-        0,
-      );
-      const totalReturnedKg = team.returns.reduce((acc, r) => acc + Number(r.returnedKg), 0);
-      const currentStockKg = Math.max(0, totalAllocatedKg - totalConsumedKg - totalReturnedKg);
-
-      return {
-        id: team.id,
-        code: team.code,
-        name: team.name,
-        department: team.department,
-        teamLead: team.teamLead,
-        remarks: team.remarks,
-        isActive: team.isActive,
-        activeOrdersCount,
-        totalAllocatedKg: Number(totalAllocatedKg.toFixed(4)),
-        totalConsumedKg: Number(totalConsumedKg.toFixed(4)),
-        totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
-        currentStockKg: Number(currentStockKg.toFixed(4)),
-        createdAt: team.createdAt,
-        updatedAt: team.updatedAt,
-      };
-    });
+      30,
+    );
   }
 
   async getTeamById(id: string) {
@@ -1654,68 +1672,74 @@ export class ProductionService {
   // ===========================================================================
 
   async getProductionSummary() {
-    const [
-      activeOrdersCount,
-      activeTeamsCount,
-      allocationsAgg,
-      consumptionAgg,
-      returnsAgg,
-      outputsAgg,
-    ] = await Promise.all([
-      this.prisma.productionOrder.count({
-        where: {
-          status: { in: [ProductionOrderStatus.PLANNED, ProductionOrderStatus.IN_PROGRESS] },
-        },
-      }),
-      this.prisma.productionTeam.count({
-        where: { isActive: true },
-      }),
-      this.prisma.yarnAllocation.aggregate({
-        _sum: { allocatedKg: true, bags: true },
-      }),
-      this.prisma.consumptionRecord.aggregate({
-        where: { isCorrected: false },
-        _sum: { consumedKg: true, wasteKg: true, bags: true },
-      }),
-      this.prisma.productionReturn.aggregate({
-        _sum: { returnedKg: true, returnedBags: true },
-      }),
-      this.prisma.productionOutput.aggregate({
-        _sum: { outputQuantityKg: true },
-      }),
-    ]);
+    return this.cacheService.getOrSet(
+      'production:summary',
+      async () => {
+        const [
+          activeOrdersCount,
+          activeTeamsCount,
+          allocationsAgg,
+          consumptionAgg,
+          returnsAgg,
+          outputsAgg,
+        ] = await Promise.all([
+          this.prisma.productionOrder.count({
+            where: {
+              status: { in: [ProductionOrderStatus.PLANNED, ProductionOrderStatus.IN_PROGRESS] },
+            },
+          }),
+          this.prisma.productionTeam.count({
+            where: { isActive: true },
+          }),
+          this.prisma.yarnAllocation.aggregate({
+            _sum: { allocatedKg: true, bags: true },
+          }),
+          this.prisma.consumptionRecord.aggregate({
+            where: { isCorrected: false },
+            _sum: { consumedKg: true, wasteKg: true, bags: true },
+          }),
+          this.prisma.productionReturn.aggregate({
+            _sum: { returnedKg: true, returnedBags: true },
+          }),
+          this.prisma.productionOutput.aggregate({
+            _sum: { outputQuantityKg: true },
+          }),
+        ]);
 
-    const totalAllocatedKg = Number(allocationsAgg._sum.allocatedKg || 0);
-    const totalAllocatedBags = allocationsAgg._sum.bags || 0;
+        const totalAllocatedKg = Number(allocationsAgg._sum.allocatedKg || 0);
+        const totalAllocatedBags = allocationsAgg._sum.bags || 0;
 
-    const totalConsumedKg = Number(consumptionAgg._sum.consumedKg || 0);
-    const totalWasteKg = Number(consumptionAgg._sum.wasteKg || 0);
-    const totalConsumedBags = consumptionAgg._sum.bags || 0;
+        const totalConsumedKg = Number(consumptionAgg._sum.consumedKg || 0);
+        const totalWasteKg = Number(consumptionAgg._sum.wasteKg || 0);
+        const totalConsumedBags = consumptionAgg._sum.bags || 0;
 
-    const totalReturnedKg = Number(returnsAgg._sum.returnedKg || 0);
-    const totalReturnedBags = returnsAgg._sum.returnedBags || 0;
+        const totalReturnedKg = Number(returnsAgg._sum.returnedKg || 0);
+        const totalReturnedBags = returnsAgg._sum.returnedBags || 0;
 
-    const currentTeamStockKg = Math.max(0, totalAllocatedKg - totalConsumedKg - totalWasteKg - totalReturnedKg);
-    const currentTeamStockBags = Math.max(0, totalAllocatedBags - totalConsumedBags - totalReturnedBags);
+        const currentTeamStockKg = Math.max(0, totalAllocatedKg - totalConsumedKg - totalWasteKg - totalReturnedKg);
+        const currentTeamStockBags = Math.max(0, totalAllocatedBags - totalConsumedBags - totalReturnedBags);
 
-    const totalOutputKg = Number(outputsAgg._sum.outputQuantityKg || 0);
-    const averageYieldPercentage = totalConsumedKg > 0 ? Number(((totalOutputKg / totalConsumedKg) * 100).toFixed(2)) : 0;
+        const totalOutputKg = Number(outputsAgg._sum.outputQuantityKg || 0);
+        const averageYieldPercentage = totalConsumedKg > 0 ? Number(((totalOutputKg / totalConsumedKg) * 100).toFixed(2)) : 0;
 
-    return {
-      activeOrdersCount,
-      activeTeamsCount,
-      totalAllocatedKg: Number(totalAllocatedKg.toFixed(4)),
-      totalAllocatedBags,
-      totalConsumedKg: Number(totalConsumedKg.toFixed(4)),
-      totalWasteKg: Number(totalWasteKg.toFixed(4)),
-      totalConsumedBags,
-      totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
-      totalReturnedBags,
-      currentTeamStockKg: Number(currentTeamStockKg.toFixed(4)),
-      currentTeamStockBags,
-      totalOutputKg: Number(totalOutputKg.toFixed(4)),
-      averageYieldPercentage,
-    };
+        return {
+          activeOrdersCount,
+          activeTeamsCount,
+          totalAllocatedKg: Number(totalAllocatedKg.toFixed(4)),
+          totalAllocatedBags,
+          totalConsumedKg: Number(totalConsumedKg.toFixed(4)),
+          totalWasteKg: Number(totalWasteKg.toFixed(4)),
+          totalConsumedBags,
+          totalReturnedKg: Number(totalReturnedKg.toFixed(4)),
+          totalReturnedBags,
+          currentTeamStockKg: Number(currentTeamStockKg.toFixed(4)),
+          currentTeamStockBags,
+          totalOutputKg: Number(totalOutputKg.toFixed(4)),
+          averageYieldPercentage,
+        };
+      },
+      30,
+    );
   }
 
   // ===========================================================================

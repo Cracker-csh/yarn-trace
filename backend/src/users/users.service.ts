@@ -11,6 +11,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { HashUtil } from '../common/utils/hash.util';
 import { UserStatus } from '@prisma/client';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -18,7 +19,12 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly cacheService: AppCacheService,
   ) {}
+
+  public invalidateUsersCaches() {
+    this.cacheService.delPattern(/^users/);
+  }
 
   private readonly userSelect = {
     id: true,
@@ -35,10 +41,16 @@ export class UsersService {
   };
 
   async findAll() {
-    return this.prisma.user.findMany({
-      select: this.userSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.cacheService.getOrSet(
+      'users:all',
+      async () => {
+        return this.prisma.user.findMany({
+          select: this.userSelect,
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+      30,
+    );
   }
 
   async findOne(id: string) {
@@ -106,6 +118,7 @@ export class UsersService {
       },
     });
 
+    this.invalidateUsersCaches();
     return user;
   }
 
@@ -175,6 +188,7 @@ export class UsersService {
       });
     }
 
+    this.invalidateUsersCaches();
     return user;
   }
 
@@ -218,6 +232,7 @@ export class UsersService {
       metadata: { targetUserEmail: user.email },
     });
 
+    this.invalidateUsersCaches();
     return user;
   }
 

@@ -109,7 +109,7 @@ export default function InventoryPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // QUERIES
+  // QUERIES (OPTIMIZED WITH TAB-BASED LAZY FETCHING & 60s CACHING)
   // ---------------------------------------------------------------------------
   // 1. Stock Summary (KPIs)
   const { data: summaryData, isLoading: isSummaryLoading } = useQuery<StockSummary>({
@@ -118,18 +118,21 @@ export default function InventoryPage() {
       const res = await apiClient.get("/inventory/summary");
       return res.data.data;
     },
+    staleTime: 60_000,
   });
 
-  // 2. Lots Stock Ledger
+  // 2. Lots Stock Ledger (Only fetched when on Lots or Counts tabs)
   const { data: lotsData, isLoading: isLotsLoading } = useQuery<LotRecord[]>({
     queryKey: ["inventory", "lots", filters],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/lots", { params: filters });
       return res.data.data;
     },
+    enabled: activeTab === "lots" || activeTab === "counts",
+    staleTime: 60_000,
   });
 
-  // 3. Transactions Ledger
+  // 3. Transactions Ledger (Only fetched when user clicks into Transactions tab)
   const { data: txData } = useQuery<{
     items: TransactionRecord[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
@@ -139,24 +142,29 @@ export default function InventoryPage() {
       const res = await apiClient.get("/inventory/transactions", { params: filters });
       return res.data.data;
     },
+    enabled: activeTab === "transactions",
+    staleTime: 60_000,
   });
 
-  // 4. Parties Master (Suppliers/Customers)
+  // 4. Parties Master (Suppliers/Customers with 2-min cache)
   const { data: partiesData } = useQuery<Party[]>({
     queryKey: ["parties"],
     queryFn: async () => {
       const res = await apiClient.get("/parties");
       return res.data.data;
     },
+    staleTime: 120_000,
   });
 
-  // 5. Active PO Requirements (for issue autocomplete & 103% ceiling verification)
+  // 5. Active PO Requirements (Only fetched on-demand when Issue or Slip modal is opened)
   const { data: poReqData } = useQuery<PORequirementOption[]>({
     queryKey: ["inventory", "po-requirements"],
     queryFn: async () => {
       const res = await apiClient.get("/inventory/po-requirements");
       return res.data.data;
     },
+    enabled: isIssueOpen || isSlipOpen,
+    staleTime: 60_000,
   });
 
   const parties = useMemo(() => partiesData || [], [partiesData]);
