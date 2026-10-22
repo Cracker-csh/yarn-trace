@@ -61,7 +61,14 @@ export class ProductionController {
   // 2. PRODUCTION TEAMS MASTER
   // ---------------------------------------------------------------------------
   @Get('teams')
-  @RequirePermission('production.view', 'production.manage_teams', 'manage_production')
+  @RequirePermission(
+    'production.view',
+    'production.manage_teams',
+    'manage_production',
+    'production.allocate',
+    'inventory.issue',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Get all production teams with active orders and stock balances' })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   async getTeams(@Query('includeInactive') includeInactive?: string) {
@@ -74,7 +81,14 @@ export class ProductionController {
   }
 
   @Get('teams/:id')
-  @RequirePermission('production.view', 'production.manage_teams', 'manage_production')
+  @RequirePermission(
+    'production.view',
+    'production.manage_teams',
+    'manage_production',
+    'production.allocate',
+    'inventory.issue',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Get production team details with inventory breakdown' })
   async getTeamById(@Param('id') id: string) {
     const data = await this.productionService.getTeamById(id);
@@ -125,7 +139,14 @@ export class ProductionController {
   // 3. ELIGIBLE INVENTORY ISSUES (FOR YARN ALLOCATION)
   // ---------------------------------------------------------------------------
   @Get('eligible-issues')
-  @RequirePermission('production.allocate', 'production.view', 'manage_production')
+  @RequirePermission(
+    'production.allocate',
+    'production.view',
+    'manage_production',
+    'inventory.issue',
+    'issue_yarn',
+    'view_inventory',
+  )
   @ApiOperation({ summary: 'Get issued inventory lots with unallocated balance available for floor assignment' })
   @ApiQuery({ name: 'lotId', required: false })
   @ApiQuery({ name: 'partyId', required: false })
@@ -148,7 +169,13 @@ export class ProductionController {
   // 4. PRODUCTION WORK ORDERS
   // ---------------------------------------------------------------------------
   @Get('orders')
-  @RequirePermission('production.view', 'manage_production')
+  @RequirePermission(
+    'production.view',
+    'manage_production',
+    'production.allocate',
+    'inventory.issue',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Get paginated list of production work orders with filters' })
   async getOrders(@Query() filterDto: ProductionFilterDto) {
     const result = await this.productionService.getOrders(filterDto);
@@ -160,7 +187,13 @@ export class ProductionController {
   }
 
   @Get('orders/:id')
-  @RequirePermission('production.view', 'manage_production')
+  @RequirePermission(
+    'production.view',
+    'manage_production',
+    'production.allocate',
+    'inventory.issue',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Get full details of a production work order' })
   async getOrderById(@Param('id') id: string) {
     const data = await this.productionService.getOrderById(id);
@@ -227,7 +260,12 @@ export class ProductionController {
   // 5. YARN ALLOCATION
   // ---------------------------------------------------------------------------
   @Post('orders/:id/allocations')
-  @RequirePermission('production.allocate', 'manage_production')
+  @RequirePermission(
+    'production.allocate',
+    'manage_production',
+    'inventory.issue',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Allocate issued yarn lot to a work order and production team' })
   async allocateYarn(
     @Param('id') orderId: string,

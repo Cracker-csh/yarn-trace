@@ -24,7 +24,16 @@ export class PartiesController {
   constructor(private readonly partiesService: PartiesService) {}
 
   @Get()
-  @RequirePermission('manage_parties', 'manage_suppliers')
+  @RequirePermission(
+    'manage_parties',
+    'manage_suppliers',
+    'view_inventory',
+    'inventory.view',
+    'inventory.receive',
+    'inventory.issue',
+    'add_yarn',
+    'issue_yarn',
+  )
   @ApiOperation({ summary: 'Get all active parties for dropdown selection and management' })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   async findAll(@Query('includeInactive') includeInactive?: string) {
@@ -36,7 +45,14 @@ export class PartiesController {
   }
 
   @Get(':id')
-  @RequirePermission('manage_parties', 'manage_suppliers')
+  @RequirePermission(
+    'manage_parties',
+    'manage_suppliers',
+    'view_inventory',
+    'inventory.view',
+    'inventory.receive',
+    'inventory.issue',
+  )
   @ApiOperation({ summary: 'Get single party by ID' })
   async findById(@Param('id') id: string) {
     const data = await this.partiesService.findById(id);

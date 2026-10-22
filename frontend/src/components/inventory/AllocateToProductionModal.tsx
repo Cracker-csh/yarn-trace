@@ -122,7 +122,11 @@ export default function AllocateToProductionModal({
     e.preventDefault();
 
     if (!currentLot) {
-      onShowToast("error", "Please select a valid yarn lot.");
+      onShowToast("error", "Please select a valid yarn lot with available stock.");
+      return;
+    }
+    if (availableWeight <= 0) {
+      onShowToast("error", `Lot "${currentLot.lotNumber}" has already been exhausted (0.00 KG available).`);
       return;
     }
     if (requestedWeight <= 0) {
@@ -134,6 +138,12 @@ export default function AllocateToProductionModal({
       return;
     }
 
+    const partyId = currentLot.party?.id || parties[0]?.id;
+    if (!partyId) {
+      onShowToast("error", "Cannot allocate: no supplier/party found for this lot.");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -141,7 +151,7 @@ export default function AllocateToProductionModal({
       const issueRes = await apiClient.post("/inventory/issued", {
         transactionDate: new Date().toISOString().split("T")[0],
         count: currentLot.count,
-        partyId: currentLot.party?.id || parties[0]?.id,
+        partyId,
         lotNumber: currentLot.lotNumber,
         bags: Number(bags) || 0,
         kilos: requestedWeight,
@@ -199,6 +209,20 @@ export default function AllocateToProductionModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+          {/* Zero Available Stock Warning */}
+          {availableLots.length === 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs flex items-start gap-2.5 text-amber-900">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">No Available Stock in Warehouse</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  All current lots have already been allocated or exhausted (0.00 KG balance).
+                  Please inward new yarn or record opening stock first.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Yarn Lot Selector */}
           <div>
             <Label htmlFor="alloc-lot" className="text-xs font-semibold text-slate-700 mb-1.5 block">
@@ -207,6 +231,7 @@ export default function AllocateToProductionModal({
             <select
               id="alloc-lot"
               value={selectedLotId}
+              disabled={availableLots.length === 0}
               onChange={(e) => {
                 setSelectedLotId(e.target.value);
                 const l = availableLots.find((lot) => lot.id === e.target.value);
@@ -215,13 +240,17 @@ export default function AllocateToProductionModal({
                   setBags(String(l.currentBags || 1));
                 }
               }}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-mono disabled:bg-slate-100 disabled:text-slate-400"
             >
-              {availableLots.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.lotNumber} | {l.count} | Avail: {Number(l.currentWeightKg).toFixed(1)} KG ({l.currentBags} bags)
-                </option>
-              ))}
+              {availableLots.length === 0 ? (
+                <option value="">-- No lots with available balance --</option>
+              ) : (
+                availableLots.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.lotNumber} | {l.count} | Avail: {Number(l.currentWeightKg).toFixed(1)} KG ({l.currentBags} bags)
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -349,14 +378,16 @@ export default function AllocateToProductionModal({
             <Button
               variant="primary"
               type="submit"
-              disabled={isSubmitting || isOverAllocated || requestedWeight <= 0}
-              className="h-10 text-xs font-semibold gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={isSubmitting || isOverAllocated || requestedWeight <= 0 || availableLots.length === 0}
+              className="h-10 text-xs font-semibold gap-1.5 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Allocating...</span>
                 </>
+              ) : availableLots.length === 0 ? (
+                <span>No Available Lots</span>
               ) : (
                 <>
                   <Factory className="h-4 w-4" />
