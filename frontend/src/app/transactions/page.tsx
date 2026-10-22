@@ -49,9 +49,11 @@ import YarnSlipModal from "../../components/inventory/YarnSlipModal";
 import OpeningStockModal from "../../components/inventory/OpeningStockModal";
 import ReceiveStockModal from "../../components/inventory/ReceiveStockModal";
 import IssueStockModal from "../../components/inventory/IssueStockModal";
+import { usePermissions } from "../../hooks/usePermissions";
 
 export default function TransactionsPage() {
   const queryClient = useQueryClient();
+  const { canReceiveStock, canAddOpeningStock, isReadOnly } = usePermissions();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
@@ -257,24 +259,34 @@ export default function TransactionsPage() {
               <Download className="h-3.5 w-3.5" />
               <span>Export Ledger</span>
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsReceiveModalOpen(true)}
-              className="gap-1.5 h-9"
-            >
-              <ArrowDownLeft className="h-3.5 w-3.5 text-brand-600" />
-              <span>Receive Inward</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsOpeningModalOpen(true)}
-              className="gap-1.5 h-9"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Entry</span>
-            </Button>
+            {isReadOnly && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                <span>Read-Only Mode</span>
+              </div>
+            )}
+            {canReceiveStock && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsReceiveModalOpen(true)}
+                className="gap-1.5 h-9"
+              >
+                <ArrowDownLeft className="h-3.5 w-3.5 text-brand-600" />
+                <span>Receive Inward</span>
+              </Button>
+            )}
+            {canAddOpeningStock && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsOpeningModalOpen(true)}
+                className="gap-1.5 h-9"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Entry</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -368,8 +380,8 @@ export default function TransactionsPage() {
               title="No transactions matching filter"
               description="Try adjusting your search criteria or register a new material transaction."
               icon={ArrowLeftRight}
-              actionLabel="+ Record Transaction"
-              onAction={() => setIsOpeningModalOpen(true)}
+              actionLabel={canAddOpeningStock ? "+ Record Transaction" : undefined}
+              onAction={canAddOpeningStock ? () => setIsOpeningModalOpen(true) : undefined}
             />
           ) : (
             <div className="overflow-x-auto">

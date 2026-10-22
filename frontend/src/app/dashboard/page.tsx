@@ -44,6 +44,7 @@ import { DashboardOverview } from "../../types/dashboard";
 import { Party, LotRecord, PORequirementOption } from "../../types/inventory";
 
 import dynamic from "next/dynamic";
+import { usePermissions } from "../../hooks/usePermissions";
 const OpeningStockModal = dynamic(() => import("../../components/inventory/OpeningStockModal"), { ssr: false });
 const ReceiveStockModal = dynamic(() => import("../../components/inventory/ReceiveStockModal"), { ssr: false });
 const IssueStockModal = dynamic(() => import("../../components/inventory/IssueStockModal"), { ssr: false });
@@ -52,6 +53,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
+  const {
+    canReceiveStock,
+    canAddOpeningStock,
+    canAllocateToFloor,
+    isReadOnly,
+  } = usePermissions();
 
   const canViewInventory =
     user?.role?.code === "ADMIN" ||
@@ -351,24 +358,34 @@ export default function DashboardPage() {
               <FileSpreadsheet className="h-3.5 w-3.5 text-slate-500" />
               <span>Export Manifest</span>
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsReceiveModalOpen(true)}
-              className="gap-1.5 h-9"
-            >
-              <ArrowRightLeft className="h-3.5 w-3.5 text-brand-600" />
-              <span>Receive Inward</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsOpeningModalOpen(true)}
-              className="gap-1.5 h-9"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Yarn Lot</span>
-            </Button>
+            {isReadOnly && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
+                <span>Read-Only Mode</span>
+              </div>
+            )}
+            {canReceiveStock && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsReceiveModalOpen(true)}
+                className="gap-1.5 h-9"
+              >
+                <ArrowRightLeft className="h-3.5 w-3.5 text-brand-600" />
+                <span>Receive Inward</span>
+              </Button>
+            )}
+            {canAddOpeningStock && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsOpeningModalOpen(true)}
+                className="gap-1.5 h-9"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Yarn Lot</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -580,8 +597,8 @@ export default function DashboardPage() {
                   title="No active yarn lots in warehouse yet"
                   description="Once inward yarn lots are registered and received, real-time balances and movement tracking will appear here."
                   icon={Boxes}
-                  actionLabel="+ Register Inward Lot"
-                  onAction={() => setIsReceiveModalOpen(true)}
+                  actionLabel={canReceiveStock ? "+ Register Inward Lot" : undefined}
+                  onAction={canReceiveStock ? () => setIsReceiveModalOpen(true) : undefined}
                 />
               )}
             </CardContent>
@@ -599,71 +616,89 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2.5">
-              <button
-                onClick={() => setIsReceiveModalOpen(true)}
-                className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-emerald-50/60 hover:border-emerald-200 text-left transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-colors shadow-sm">
-                    <ArrowDownLeft className="h-4 w-4 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">
-                      Inward Lot Reception
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Record gate inward Challan
-                    </p>
-                  </div>
+              {isReadOnly ? (
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 text-center">
+                  <ShieldCheck className="h-5 w-5 text-amber-600 mx-auto mb-1.5" />
+                  <p className="text-xs font-bold text-slate-800">Read-Only Oversight</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Stock reception, baseline additions, and floor allocations are restricted for viewer accounts.
+                  </p>
                 </div>
-                <Badge variant="secondary" className="text-[10px] font-semibold">
-                  Receive
-                </Badge>
-              </button>
+              ) : (
+                <>
+                  {canReceiveStock && (
+                    <button
+                      onClick={() => setIsReceiveModalOpen(true)}
+                      className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-emerald-50/60 hover:border-emerald-200 text-left transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-colors shadow-sm">
+                          <ArrowDownLeft className="h-4 w-4 stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">
+                            Inward Lot Reception
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Record gate inward Challan
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] font-semibold">
+                        Receive
+                      </Badge>
+                    </button>
+                  )}
 
-              <button
-                onClick={() => setIsIssueModalOpen(true)}
-                className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-amber-50/60 hover:border-amber-200 text-left transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-amber-600 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 transition-colors shadow-sm">
-                    <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">
-                      Issue to Production Team
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Stock Head handoff slip
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="text-[10px] font-semibold">
-                  Issue
-                </Badge>
-              </button>
+                  {canAllocateToFloor && (
+                    <button
+                      onClick={() => setIsIssueModalOpen(true)}
+                      className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-amber-50/60 hover:border-amber-200 text-left transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-amber-600 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 transition-colors shadow-sm">
+                          <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">
+                            Issue to Production Team
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Stock Head handoff slip
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] font-semibold">
+                        Issue
+                      </Badge>
+                    </button>
+                  )}
 
-              <button
-                onClick={() => setIsOpeningModalOpen(true)}
-                className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50/60 hover:border-orange-200 text-left transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-orange-600 group-hover:bg-orange-600 group-hover:text-white group-hover:border-orange-600 transition-colors shadow-sm">
-                    <Plus className="h-4 w-4 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">
-                      Add Opening Stock
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Record baseline inventory
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="text-[10px] font-semibold">
-                  Opening
-                </Badge>
-              </button>
+                  {canAddOpeningStock && (
+                    <button
+                      onClick={() => setIsOpeningModalOpen(true)}
+                      className="flex w-full items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50/60 hover:border-orange-200 text-left transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-orange-600 group-hover:bg-orange-600 group-hover:text-white group-hover:border-orange-600 transition-colors shadow-sm">
+                          <Plus className="h-4 w-4 stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">
+                            Add Opening Stock
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Record baseline inventory
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] font-semibold">
+                        Opening
+                      </Badge>
+                    </button>
+                  )}
+                </>
+              )}
 
               <button
                 onClick={() => router.push("/inventory")}
