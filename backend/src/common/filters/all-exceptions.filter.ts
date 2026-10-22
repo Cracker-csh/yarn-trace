@@ -29,6 +29,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       success: false,
       message,
       errors: [message],
+      details: exception instanceof Error ? exception.message : String(exception),
     });
   }
 }

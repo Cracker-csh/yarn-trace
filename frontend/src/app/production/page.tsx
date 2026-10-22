@@ -12,6 +12,8 @@ import {
   XCircle,
   Loader2,
   Eye,
+  Kanban,
+  List,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
@@ -43,8 +45,10 @@ const ProductionTeamsModal = dynamic(() => import("../../components/production/P
 const WorkOrderModal = dynamic(() => import("../../components/production/WorkOrderModal"), { ssr: false });
 const WorkOrderDetailModal = dynamic(() => import("../../components/production/WorkOrderDetailModal"), { ssr: false });
 const AllocateYarnModal = dynamic(() => import("../../components/production/AllocateYarnModal"), { ssr: false });
+import ProductionKanbanBoard from "../../components/kanban/ProductionKanbanBoard";
 
 export default function ProductionPage() {
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
 
   // Toast Notification State
   const [toast, setToast] = useState<{
@@ -188,15 +192,43 @@ export default function ProductionPage() {
         title="Production & Floor Allocation"
         subtitle="Manage production work orders, team allocations, floor consumption records, and waste tracking."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Switcher */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setViewMode("kanban")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "kanban"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Kanban className="h-3.5 w-3.5 text-primary" />
+                <span>Production Board</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "table"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <List className="h-3.5 w-3.5 text-slate-500" />
+                <span>Orders Table</span>
+              </button>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsTeamsModalOpen(true)}
-              className="gap-1.5"
+              className="gap-1.5 h-8 text-xs"
             >
               <Users className="h-3.5 w-3.5" />
-              <span>Production Teams</span>
+              <span>Teams</span>
             </Button>
             <Button
               variant="primary"
@@ -205,7 +237,7 @@ export default function ProductionPage() {
                 setOrderToEdit(null);
                 setIsWorkOrderModalOpen(true);
               }}
-              className="gap-1.5"
+              className="gap-1.5 h-8 text-xs font-semibold"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>New Work Order</span>
@@ -217,8 +249,13 @@ export default function ProductionPage() {
       {/* Production Overview KPI Cards */}
       <ProductionKpiCards summary={summaryData} isLoading={isLoadingSummary} />
 
-      {/* Filters Bar */}
-      <ProductionFilters
+      {/* Main Content: Kanban Board or Orders Table */}
+      {viewMode === "kanban" ? (
+        <ProductionKanbanBoard onShowToast={showToast} teams={teams} />
+      ) : (
+        <>
+          {/* Filters Bar */}
+          <ProductionFilters
         search={search}
         onSearchChange={(v) => {
           setSearch(v);
@@ -428,6 +465,8 @@ export default function ProductionPage() {
           )}
         </CardContent>
       </Card>
+    </>
+  )}
 
       {/* Production Teams Management Modal */}
       <ProductionTeamsModal

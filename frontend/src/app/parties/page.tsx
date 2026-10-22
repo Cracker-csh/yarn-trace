@@ -19,6 +19,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Sparkles,
+  ShieldAlert,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
@@ -38,10 +39,12 @@ import { apiClient } from "../../lib/axios";
 import dynamic from "next/dynamic";
 import { Party } from "../../types/inventory";
 import type { PartyFormValues } from "../../components/parties/PartyModal";
+import { usePermissions } from "../../hooks/usePermissions";
 const PartyModal = dynamic(() => import("../../components/parties/PartyModal"), { ssr: false });
 
 export default function PartiesPage() {
   const queryClient = useQueryClient();
+  const { isReadOnly, canManageParties } = usePermissions();
 
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,6 +85,7 @@ export default function PartiesPage() {
       return res.data.data;
     },
     placeholderData: keepPreviousData,
+    enabled: Boolean(canManageParties),
     staleTime: 60_000,
   });
 
@@ -254,15 +258,23 @@ export default function PartiesPage() {
               />
               <span className="hidden sm:inline">Sync</span>
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleOpenCreateModal}
-              className="gap-1.5 h-9"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add New Party</span>
-            </Button>
+            {isReadOnly && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                <span>Read-Only Mode</span>
+              </div>
+            )}
+            {canManageParties && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenCreateModal}
+                className="gap-1.5 h-9"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add New Party</span>
+              </Button>
+            )}
           </div>
         }
       />

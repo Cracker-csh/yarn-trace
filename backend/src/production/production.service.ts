@@ -38,6 +38,15 @@ export class ProductionService {
     this.cacheService.delPattern(/^inventory/);
   }
 
+  private async executeProductionTx<T>(
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.$transaction(fn, {
+      maxWait: 15000,
+      timeout: 60000,
+    });
+  }
+
   // Helper to generate unique sequential Work Order numbers (e.g., WO-2026-0001)
   private async generateWorkOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
     const year = new Date().getFullYear();
@@ -763,7 +772,7 @@ export class ProductionService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       let orderNumber = dto.orderNumber?.trim();
       if (!orderNumber) {
         orderNumber = await this.generateWorkOrderNumber(tx);
@@ -877,7 +886,7 @@ export class ProductionService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       const order = await tx.productionOrder.update({
         where: { id },
         data: {
@@ -955,7 +964,7 @@ export class ProductionService {
     const allocDate = dto.allocatedDate ? new Date(dto.allocatedDate) : new Date();
     const allocKg = dto.allocatedKg;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       // 1. Verify source ISSUED transaction
       const sourceTx = await tx.transaction.findUnique({
         where: { id: dto.inventoryTransactionId },
@@ -1083,7 +1092,7 @@ export class ProductionService {
     const wasteKg = dto.wasteKg || 0;
     const totalSessionKg = consumedKg + wasteKg;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       // 1. Verify Allocation
       const allocation = await tx.yarnAllocation.findUnique({
         where: { id: dto.yarnAllocationId },
@@ -1212,7 +1221,7 @@ export class ProductionService {
       throw new BadRequestException(`Consumption record is already marked as corrected.`);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       // 1. Calculate projected allocation balance with corrected values
       if (originalRecord.yarnAllocation) {
         const alloc = originalRecord.yarnAllocation;
@@ -1312,7 +1321,7 @@ export class ProductionService {
     const retKg = dto.returnedKg;
     const retBags = dto.returnedBags || 0;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       const defaultLoc = await this.getOrCreateDefaultLocation(tx);
 
       // 1. Verify Allocation
@@ -1503,7 +1512,7 @@ export class ProductionService {
     const outDate = dto.outputDate ? new Date(dto.outputDate) : new Date();
     const outputKg = dto.outputQuantityKg;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.executeProductionTx(async (tx) => {
       const output = await tx.productionOutput.create({
         data: {
           productionOrderId: order.id,

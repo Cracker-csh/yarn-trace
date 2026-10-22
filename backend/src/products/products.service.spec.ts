@@ -2,6 +2,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -142,6 +143,7 @@ describe('ProductsService Unit Tests', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductsService,
+        AppCacheService,
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { TransactionType, LotStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
@@ -137,6 +138,7 @@ describe('DashboardService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DashboardService,
+        AppCacheService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: InventoryService, useValue: mockInventoryService },
       ],

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { POStatus, TransactionType } from '@prisma/client';
 
@@ -144,6 +145,7 @@ describe('PurchaseOrdersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PurchaseOrdersService,
+        AppCacheService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,

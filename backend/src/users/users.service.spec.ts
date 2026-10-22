@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { HashUtil } from '../common/utils/hash.util';
@@ -55,6 +56,7 @@ describe('UsersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
+        AppCacheService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: AuditService, useValue: mockAuditService },
       ],

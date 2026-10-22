@@ -2,6 +2,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductionService } from './production.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { BadRequestException } from '@nestjs/common';
 import { ProductionOrderStatus, YarnAllocationStatus, TransactionType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -88,6 +89,7 @@ describe('ProductionService End-to-End Logic Tests', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductionService,
+        AppCacheService,
         { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();

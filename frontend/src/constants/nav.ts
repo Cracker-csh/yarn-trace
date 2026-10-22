@@ -11,6 +11,7 @@ import {
   UserCog,
   ShieldCheck,
   FileClock,
+  Kanban,
   Settings,
 } from "lucide-react";
 import { NavItem } from "../types/navigation";
@@ -22,6 +23,13 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     href: "/dashboard",
     icon: LayoutDashboard,
     section: "MAIN",
+  },
+  {
+    title: "Stock Workflow",
+    href: "/workflow",
+    icon: Kanban,
+    section: "MAIN",
+    requiredPermission: "view_inventory",
   },
   {
     title: "Inventory",

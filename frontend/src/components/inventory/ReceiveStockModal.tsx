@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,12 +34,15 @@ const receiveSchema = z.object({
 
 type ReceiveFormValues = z.infer<typeof receiveSchema>;
 
+import { apiClient } from "../../lib/axios";
+
 interface ReceiveStockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (values: ReceiveFormValues) => Promise<void>;
+  onSubmit?: (values: ReceiveFormValues) => Promise<void>;
   parties: Party[];
-  isLoading: boolean;
+  isLoading?: boolean;
+  onShowToast?: (type: "success" | "error", message: string) => void;
 }
 
 export default function ReceiveStockModal({
@@ -47,8 +50,12 @@ export default function ReceiveStockModal({
   onClose,
   onSubmit,
   parties,
-  isLoading,
+  isLoading = false,
+  onShowToast,
 }: ReceiveStockModalProps) {
+  const [internalLoading, setInternalLoading] = useState(false);
+  const loading = isLoading || internalLoading;
+
   const {
     register,
     handleSubmit,
@@ -74,9 +81,23 @@ export default function ReceiveStockModal({
   });
 
   const handleFormSubmit = async (values: ReceiveFormValues) => {
-    await onSubmit(values);
-    reset();
-    onClose();
+    try {
+      if (onSubmit) {
+        await onSubmit(values);
+      } else {
+        setInternalLoading(true);
+        await apiClient.post("/inventory/received", values);
+        onShowToast?.("success", "Inward stock received and recorded successfully!");
+      }
+      reset();
+      onClose();
+    } catch (err: any) {
+      if (!onSubmit && onShowToast) {
+        onShowToast("error", err?.response?.data?.message || "Failed to receive inward stock");
+      }
+    } finally {
+      setInternalLoading(false);
+    }
   };
 
   return (
@@ -244,11 +265,11 @@ export default function ReceiveStockModal({
           </div>
 
           <DialogFooter className="pt-3">
-            <Button variant="outline" type="button" onClick={onClose} disabled={isLoading} className="h-10 px-5 text-xs font-semibold">
+            <Button variant="outline" type="button" onClick={onClose} disabled={loading} className="h-10 px-5 text-xs font-semibold">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={isLoading} className="h-10 px-5 text-xs font-semibold gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700">
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button variant="primary" type="submit" disabled={loading} className="h-10 px-5 text-xs font-semibold gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>Receive Inward Stock</span>
             </Button>
           </DialogFooter>

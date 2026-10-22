@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -30,12 +30,16 @@ const openingSchema = z.object({
 
 type OpeningFormValues = z.infer<typeof openingSchema>;
 
+import { apiClient } from "../../lib/axios";
+
 interface OpeningStockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (values: OpeningFormValues) => Promise<void>;
+  onSubmit?: (values: OpeningFormValues) => Promise<void>;
   parties: Party[];
-  isLoading: boolean;
+  isLoading?: boolean;
+  existingLots?: any[];
+  onShowToast?: (type: "success" | "error", message: string) => void;
 }
 
 export default function OpeningStockModal({
@@ -43,8 +47,13 @@ export default function OpeningStockModal({
   onClose,
   onSubmit,
   parties,
-  isLoading,
+  isLoading = false,
+  existingLots = [],
+  onShowToast,
 }: OpeningStockModalProps) {
+  const [internalLoading, setInternalLoading] = useState(false);
+  const loading = isLoading || internalLoading;
+
   const {
     register,
     handleSubmit,
@@ -66,9 +75,23 @@ export default function OpeningStockModal({
   });
 
   const handleFormSubmit = async (values: OpeningFormValues) => {
-    await onSubmit(values);
-    reset();
-    onClose();
+    try {
+      if (onSubmit) {
+        await onSubmit(values);
+      } else {
+        setInternalLoading(true);
+        await apiClient.post("/inventory/opening", values);
+        onShowToast?.("success", "Opening stock recorded successfully!");
+      }
+      reset();
+      onClose();
+    } catch (err: any) {
+      if (!onSubmit && onShowToast) {
+        onShowToast("error", err?.response?.data?.message || "Failed to add opening stock");
+      }
+    } finally {
+      setInternalLoading(false);
+    }
   };
 
   return (
@@ -245,11 +268,11 @@ export default function OpeningStockModal({
           </div>
 
           <DialogFooter className="pt-3">
-            <Button variant="outline" type="button" onClick={onClose} disabled={isLoading} className="h-10 px-5 text-xs font-semibold">
+            <Button variant="outline" type="button" onClick={onClose} disabled={loading} className="h-10 px-5 text-xs font-semibold">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={isLoading} className="h-10 px-5 text-xs font-semibold gap-1.5 shadow-sm">
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button variant="primary" type="submit" disabled={loading} className="h-10 px-5 text-xs font-semibold gap-1.5 shadow-sm">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>Save Opening Stock</span>
             </Button>
           </DialogFooter>

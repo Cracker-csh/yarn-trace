@@ -10,6 +10,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   RotateCcw,
+  RotateCw,
   AlertOctagon,
   DollarSign,
   FileSpreadsheet,
@@ -20,6 +21,10 @@ import {
   AlertCircle,
   X,
   GitBranch,
+  Kanban,
+  List,
+  ChevronDown,
+  ShieldAlert,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import PageHeader from "../../components/common/PageHeader";
@@ -42,12 +47,14 @@ import {
   PORequirementOption,
   InventoryFilters,
 } from "../../types/inventory";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import dynamic from "next/dynamic";
 
 // Subcomponents & Modals (Lazy Loaded on Demand)
 import InventoryKpiCards from "../../components/inventory/InventoryKpiCards";
 import InventoryFilterBar from "../../components/inventory/InventoryFilterBar";
+import StockKanbanBoard from "../../components/kanban/StockKanbanBoard";
 const OpeningStockModal = dynamic(() => import("../../components/inventory/OpeningStockModal"), { ssr: false });
 const ReceiveStockModal = dynamic(() => import("../../components/inventory/ReceiveStockModal"), { ssr: false });
 const IssueStockModal = dynamic(() => import("../../components/inventory/IssueStockModal"), { ssr: false });
@@ -60,6 +67,11 @@ const YarnSlipModal = dynamic(() => import("../../components/inventory/YarnSlipM
 export default function InventoryPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { isReadOnly, canReceiveStock, canAddOpeningStock } = usePermissions();
+  const [isAddStockMenuOpen, setIsAddStockMenuOpen] = useState(false);
+
+  // View Mode: Visual Kanban Pipeline vs Detailed Table
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
 
   // Active Tab View
   const [activeTab, setActiveTab] = useState<"lots" | "transactions" | "counts" | "parties">(
@@ -80,6 +92,19 @@ export default function InventoryPage() {
     page: 1,
     limit: 50,
   });
+
+  // Active filters count for filter button badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.search) count++;
+    if (filters.count) count++;
+    if (filters.partyId) count++;
+    if (filters.lotNumber) count++;
+    if (filters.purpose) count++;
+    if (filters.poNumber) count++;
+    if (filters.startDate || filters.endDate) count++;
+    return count;
+  }, [filters]);
 
   const [showFilterBar, setShowFilterBar] = useState(false);
 
@@ -403,94 +428,183 @@ export default function InventoryPage() {
         subtitle="Manage warehouse stock balances in KG, yarn counts, and physical location allocations."
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {/* Export Menu */}
-            <div className="flex items-center rounded-lg border border-input bg-card shadow-sm overflow-hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleExport("xlsx")}
-                className="gap-1 text-xs h-8 px-2.5 hover:bg-muted"
-                title="Export Excel (.xlsx)"
+            {/* View Switcher */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setViewMode("kanban")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "kanban"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
               >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Excel</span>
-              </Button>
-              <div className="w-[1px] h-4 bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleExport("csv")}
-                className="gap-1 text-xs h-8 px-2.5 hover:bg-muted"
-                title="Export CSV"
+                <Kanban className="h-3.5 w-3.5 text-primary" />
+                <span>Kanban Pipeline</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "table"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
               >
-                <FileText className="h-3.5 w-3.5 text-blue-600" />
-                <span>CSV</span>
-              </Button>
+                <List className="h-3.5 w-3.5 text-slate-500" />
+                <span>Detailed Table</span>
+              </button>
             </div>
+
+            {/* Refresh Button placed right near Kanban Pipeline */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+                  queryClient.invalidateQueries({ queryKey: ["production"] }),
+                  queryClient.invalidateQueries({ queryKey: ["parties"] }),
+                ]);
+                showToast("success", "Inventory and pipeline synchronized with live ledger.");
+              }}
+              className="gap-1.5 h-8 px-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border-slate-200 shadow-sm"
+              title="Sync live pipeline and inventory"
+            >
+              <RotateCw className="h-3.5 w-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
 
             {/* Toggle Filters */}
             <Button
               variant={showFilterBar ? "primary" : "outline"}
               size="sm"
               onClick={() => setShowFilterBar(!showFilterBar)}
-              className="gap-1.5 h-8 text-xs"
+              className={`gap-1.5 h-8 text-xs font-semibold transition-all ${
+                showFilterBar ? "bg-slate-900 text-white hover:bg-slate-800" : ""
+              }`}
             >
               <Filter className="h-3.5 w-3.5" />
               <span>{showFilterBar ? "Hide Filters" : "Filter Lots"}</span>
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-brand-500 text-white text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
             </Button>
 
-            {/* Receive Inward Yarn */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsReceiveOpen(true)}
-              className="gap-1.5 h-8 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-            >
-              <ArrowDownLeft className="h-3.5 w-3.5" />
-              <span>Receive Stock</span>
-            </Button>
+            {/* Single Primary Action Button */}
+            {isReadOnly ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                <span>Read-Only Mode</span>
+              </div>
+            ) : (
+              (canReceiveStock || canAddOpeningStock) && (
+                <div className="relative">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsAddStockMenuOpen(!isAddStockMenuOpen)}
+                    className="gap-1.5 h-8 px-3 text-xs font-semibold shadow-sm bg-brand-600 hover:bg-brand-700 text-white"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add Stock</span>
+                    <ChevronDown className="h-3 w-3 opacity-80" />
+                  </Button>
 
-            {/* Add Opening Stock */}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsOpeningOpen(true)}
-              className="gap-1.5 h-8 text-xs shadow-sm"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add Opening Stock</span>
-            </Button>
+                  {isAddStockMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsAddStockMenuOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-top-1 text-xs">
+                        {canReceiveStock && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddStockMenuOpen(false);
+                              setIsReceiveOpen(true);
+                            }}
+                            className="w-full flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-emerald-50 text-left transition-colors group"
+                          >
+                            <ArrowDownLeft className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                            <div>
+                              <div className="font-semibold text-slate-800">Receive Inward Stock</div>
+                              <div className="text-[10px] text-slate-500">From supplier or dyeing mill</div>
+                            </div>
+                          </button>
+                        )}
+
+                        {canReceiveStock && canAddOpeningStock && (
+                          <div className="my-1 border-t border-slate-100" />
+                        )}
+
+                        {canAddOpeningStock && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddStockMenuOpen(false);
+                              setIsOpeningOpen(true);
+                            }}
+                            className="w-full flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-blue-50 text-left transition-colors group"
+                          >
+                            <Plus className="h-4 w-4 text-brand-600 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                            <div>
+                              <div className="font-semibold text-slate-800">Opening Stock</div>
+                              <div className="text-[10px] text-slate-500">Initial warehouse balance</div>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            )}
           </div>
         }
       />
 
-      {/* Real KPI Summary Cards */}
-      <InventoryKpiCards summary={summaryData} isLoading={isSummaryLoading} />
-
-      {/* Expandable Filter Bar */}
+      {/* Expandable Filter Bar (Unified for both Kanban & Table views) */}
       {showFilterBar && (
-        <InventoryFilterBar
-          filters={filters}
-          parties={parties}
-          onFilterChange={(newF) => setFilters((prev) => ({ ...prev, ...newF, page: 1 }))}
-          onReset={() =>
-            setFilters({
-              search: "",
-              count: "",
-              partyId: "",
-              lotNumber: "",
-              type: undefined,
-              purpose: "",
-              poNumber: "",
-              startDate: "",
-              endDate: "",
-              page: 1,
-              limit: 50,
-            })
-          }
-          activeTab={activeTab}
-        />
+        <div className="mb-4">
+          <InventoryFilterBar
+            filters={filters}
+            parties={parties}
+            onFilterChange={(newF) => setFilters((prev) => ({ ...prev, ...newF, page: 1 }))}
+            onReset={() =>
+              setFilters({
+                search: "",
+                count: "",
+                partyId: "",
+                lotNumber: "",
+                type: undefined,
+                purpose: "",
+                poNumber: "",
+                startDate: "",
+                endDate: "",
+                page: 1,
+                limit: 50,
+              })
+            }
+            activeTab={activeTab}
+          />
+        </div>
       )}
+
+      {/* Main View: Kanban Pipeline vs Detailed Table */}
+      {viewMode === "kanban" ? (
+        <StockKanbanBoard
+          onShowToast={(type, text) => showToast(type, text)}
+          externalFilters={filters}
+          isEmbeddedInInventory={true}
+        />
+      ) : (
+        <>
+          {/* Real KPI Summary Cards */}
+          <InventoryKpiCards summary={summaryData} isLoading={isSummaryLoading} />
 
       {/* Main Stock Table / Views */}
       {hasNoData ? (
@@ -902,6 +1016,8 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       )}
+    </>
+  )}
 
       {/* ---------------------------------------------------------------------- */}
       {/* MODALS */}

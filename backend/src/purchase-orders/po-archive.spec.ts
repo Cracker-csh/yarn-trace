@@ -4,6 +4,7 @@ import { PurchaseOrdersController } from './purchase-orders.controller';
 import { InventoryService } from '../inventory/inventory.service';
 import { ReportsService } from '../reports/reports.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppCacheService } from '../common/cache/app-cache.service';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Reflector } from '@nestjs/core';
 import {
@@ -185,6 +186,7 @@ describe('PO Requirement Archive & Soft Delete System', () => {
         PurchaseOrdersService,
         InventoryService,
         ReportsService,
+        AppCacheService,
         {
           provide: PrismaService,
           useValue: mockPrisma,
