@@ -448,11 +448,21 @@ export class ProductionService {
               lotId: tx.lotId,
               lotNumber: tx.lot?.lotNumber || '—',
               yarnCount: tx.yarnCount || tx.lot?.yarnCount || '—',
+              count: tx.yarnCount || tx.lot?.yarnCount || '—',
               partyId: tx.partyId,
               partyName: tx.party?.name || '—',
+              party: tx.party
+                ? {
+                    id: tx.party.id,
+                    name: tx.party.name,
+                    code: tx.party.code,
+                  }
+                : null,
               poNumber: tx.poNumber || null,
               purpose: tx.purpose || 'GENERAL',
+              bags: tx.bags,
               issuedBags: tx.bags,
+              kilos: totalIssuedKg,
               totalIssuedKg: Number(totalIssuedKg.toFixed(4)),
               totalAllocatedKg: Number(totalAllocatedKg.toFixed(4)),
               unallocatedKg: Number(unallocatedKg.toFixed(4)),

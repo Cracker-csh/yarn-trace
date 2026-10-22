@@ -272,7 +272,7 @@ export default function StockKanbanBoard({
         id: `lot-${lot.id}`,
         type: "LOT",
         referenceNumber: lot.lotNumber,
-        title: lot.count || "Yarn Stock",
+        title: lot.count || lot.yarnCount || "Yarn Stock",
         subtitle: lot.party?.name ? `Supplier: ${lot.party.name}` : undefined,
         lotNumber: lot.lotNumber,
         weightKg: currentKg,
@@ -287,17 +287,24 @@ export default function StockKanbanBoard({
 
     // Map Eligible Issued Transactions to Pending Allocation
     eligibleIssues.forEach((issue: any) => {
+      const yarnCountLabel =
+        issue.yarnCount ||
+        issue.count ||
+        issue.lot?.yarnCount ||
+        issue.rawPayload?.yarnCount ||
+        "Yarn Stock";
+
       items.push({
         id: `issue-${issue.id}`,
         type: "ISSUE",
         referenceNumber: issue.transactionNumber || `ISSUE-${issue.lotNumber}`,
-        title: `${issue.count} (Pending Assign)`,
-        subtitle: `Lot: ${issue.lotNumber}`,
-        lotNumber: issue.lotNumber,
-        weightKg: Number(issue.unallocatedKg || issue.kilos || 0),
-        bagsCount: issue.bags,
+        title: `${yarnCountLabel} (Pending Assign)`,
+        subtitle: `Lot: ${issue.lotNumber || issue.lot?.lotNumber || "—"}`,
+        lotNumber: issue.lotNumber || issue.lot?.lotNumber,
+        weightKg: Number(issue.unallocatedKg ?? issue.kilos ?? issue.totalIssuedKg ?? 0),
+        bagsCount: issue.issuedBags ?? issue.bags ?? 0,
         locationOrDepartment: issue.purpose || "Floor Stage",
-        assignedTo: issue.party?.name || null,
+        assignedTo: issue.partyName || issue.party?.name || null,
         stageId: "pending_allocation",
         status: "ISSUED",
         rawPayload: issue,
@@ -716,8 +723,12 @@ export default function StockKanbanBoard({
             <div className="space-y-3 my-2 text-xs">
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div>
-                  <span className="text-slate-400 block uppercase tracking-wider text-[10px]">Product</span>
-                  <span className="font-bold text-slate-900 text-sm mt-0.5 block">{selectedDetailItem.title}</span>
+                  <span className="text-slate-400 block uppercase tracking-wider text-[10px]">
+                    {selectedDetailItem.type === "ORDER" ? "Product" : "Yarn Count / Item"}
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm mt-0.5 block">
+                    {(selectedDetailItem.title || "Yarn Stock").replace(/^undefined\s*/i, "Yarn Stock ")}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block uppercase tracking-wider text-[10px]">Status</span>
@@ -731,7 +742,9 @@ export default function StockKanbanBoard({
                 </div>
                 <div>
                   <span className="text-slate-400 block uppercase tracking-wider text-[10px]">Location</span>
-                  <span className="font-semibold text-slate-800 mt-0.5 block">{selectedDetailItem.locationOrDepartment}</span>
+                  <span className="font-semibold text-slate-800 mt-0.5 block">
+                    {selectedDetailItem.locationOrDepartment || "Floor"}
+                  </span>
                 </div>
               </div>
             </div>

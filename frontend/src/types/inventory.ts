@@ -44,6 +44,7 @@ export interface LotRecord {
   id: string;
   lotNumber: string;
   count: string;
+  yarnCount?: string;
   party: {
     id: string;
     name: string;
