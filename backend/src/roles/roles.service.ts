@@ -22,6 +22,7 @@ export class RolesService {
 
   public invalidateRolesCaches() {
     this.cacheService.delPattern(/^roles/);
+    this.cacheService.del('permissions:all');
   }
 
   async findAll() {

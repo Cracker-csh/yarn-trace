@@ -111,16 +111,30 @@ async function main() {
     { key: 'production.correct', name: 'Correct Consumption Records', module: 'PRODUCTION' },
     { key: 'production.manage_teams', name: 'Manage Production Teams Master', module: 'PRODUCTION' },
     { key: 'production.view_reports', name: 'View Production Reports', module: 'PRODUCTION' },
+    { key: 'production.output', name: 'Record Production Output', module: 'PRODUCTION' },
     { key: 'manage_suppliers', name: 'Manage Suppliers', module: 'COMMERCIAL' },
     { key: 'manage_parties', name: 'Manage Parties', module: 'COMMERCIAL' },
     { key: 'manage_purchase_orders', name: 'Manage Purchase Orders', module: 'COMMERCIAL' },
+    { key: 'purchase_orders.view', name: 'View Purchase Orders', module: 'COMMERCIAL' },
+    { key: 'purchase_orders.create', name: 'Create Purchase Orders', module: 'COMMERCIAL' },
+    { key: 'purchase_orders.edit', name: 'Edit Purchase Orders', module: 'COMMERCIAL' },
+    { key: 'purchase_orders.cancel', name: 'Cancel Purchase Orders', module: 'COMMERCIAL' },
+    { key: 'purchase_orders.manage_requirements', name: 'Manage PO Requirements', module: 'COMMERCIAL' },
+    { key: 'products.view', name: 'View Output Products', module: 'PRODUCTS' },
+    { key: 'products.create', name: 'Register Output Batch', module: 'PRODUCTS' },
+    { key: 'products.edit', name: 'Edit Output Batch', module: 'PRODUCTS' },
+    { key: 'products.cancel', name: 'Cancel / Quarantine Output Batch', module: 'PRODUCTS' },
+    { key: 'products.export', name: 'Export Finished Products', module: 'PRODUCTS' },
     { key: 'view_traceability', name: 'View Traceability', module: 'TRACEABILITY' },
+    { key: 'traceability.view', name: 'View Traceability Tree', module: 'TRACEABILITY' },
+    { key: 'traceability.export', name: 'Export Traceability Tree', module: 'TRACEABILITY' },
     { key: 'view_reports', name: 'View Reports', module: 'REPORTS' },
     { key: 'manage_users', name: 'Manage Users', module: 'GOVERNANCE' },
     { key: 'manage_roles', name: 'Manage Roles', module: 'GOVERNANCE' },
     { key: 'view_audit_logs', name: 'View Audit Logs', module: 'GOVERNANCE' },
     { key: 'edit_records', name: 'Edit Records', module: 'GOVERNANCE' },
     { key: 'delete_records', name: 'Delete Records', module: 'GOVERNANCE' },
+    { key: 'receive_stock', name: 'Receive Stock (Legacy)', module: 'INVENTORY' },
   ];
 
   for (const p of permissionsList) {
@@ -149,8 +163,8 @@ async function main() {
       },
     });
 
-    // Assign inventory permissions to STOCK_HEAD
-    if (p.module === 'INVENTORY' || p.key === 'manage_parties') {
+    // Assign inventory & commercial permissions to STOCK_HEAD
+    if (p.module === 'INVENTORY' || p.module === 'COMMERCIAL' || p.key === 'products.view') {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
@@ -186,10 +200,12 @@ async function main() {
       });
     }
 
-    // Assign production, dashboard, and inventory view permissions to PRODUCTION_HEAD
+    // Assign production, products, dashboard, and inventory view permissions to PRODUCTION_HEAD
     if (
       p.module === 'PRODUCTION' ||
+      p.module === 'PRODUCTS' ||
       p.key === 'view_traceability' ||
+      p.key === 'traceability.view' ||
       p.key === 'dashboard.view' ||
       p.key === 'view_dashboard' ||
       p.key === 'inventory.view' ||
@@ -211,15 +227,17 @@ async function main() {
       });
     }
 
-    // Assign QA, traceability, and dashboard permissions to QUALITY_HEAD
+    // Assign QA, products, traceability, and dashboard permissions to QUALITY_HEAD
     if (
       p.key === 'dashboard.view' ||
       p.key === 'view_dashboard' ||
       p.key === 'inventory.view' ||
       p.key === 'view_inventory' ||
       p.key === 'view_traceability' ||
+      p.key === 'traceability.view' ||
       p.key === 'view_reports' ||
-      p.key === 'production.view'
+      p.key === 'production.view' ||
+      p.module === 'PRODUCTS'
     ) {
       await prisma.rolePermission.upsert({
         where: {
@@ -240,7 +258,9 @@ async function main() {
     const viewerPermKeys = [
       'dashboard.view', 'view_dashboard',
       'view_inventory', 'inventory.view',
-      'view_traceability', 'view_reports',
+      'view_traceability', 'traceability.view',
+      'view_reports',
+      'products.view', 'purchase_orders.view',
     ];
     if (viewerPermKeys.includes(p.key)) {
       await prisma.rolePermission.upsert({
