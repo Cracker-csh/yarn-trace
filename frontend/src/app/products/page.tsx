@@ -45,6 +45,7 @@ import {
 } from "../../types/product";
 
 import dynamic from "next/dynamic";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // Products Modals (Lazy Loaded)
 const RegisterBatchModal = dynamic(() => import("../../components/products/RegisterBatchModal"), { ssr: false });
@@ -52,6 +53,8 @@ const EditBatchModal = dynamic(() => import("../../components/products/EditBatch
 const CancelBatchModal = dynamic(() => import("../../components/products/CancelBatchModal"), { ssr: false });
 
 export default function ProductsPage() {
+  const { canCreateProductBatch, isViewer } = usePermissions();
+
   // Toast notifications
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -237,15 +240,17 @@ export default function ProductsPage() {
         title="Finished Output Products"
         subtitle="Catalog of finished fabric rolls, processed yarns, and manufactured batches ready for delivery."
         action={
-          <Button
-            variant="primary"
-            size="sm"
-            className="gap-1.5 shadow-sm"
-            onClick={() => setIsRegisterOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Register Output Batch</span>
-          </Button>
+          canCreateProductBatch ? (
+            <Button
+              variant="primary"
+              size="sm"
+              className="gap-1.5 shadow-sm"
+              onClick={() => setIsRegisterOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Register Output Batch</span>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -453,8 +458,8 @@ export default function ProductsPage() {
                 title="No finished products registered yet"
                 description="Finished products output from completed production orders will be listed here."
                 icon={Layers}
-                actionLabel="+ Register First Batch"
-                onAction={() => setIsRegisterOpen(true)}
+                actionLabel={canCreateProductBatch ? "+ Register First Batch" : undefined}
+                onAction={canCreateProductBatch ? () => setIsRegisterOpen(true) : undefined}
               />
             </div>
           ) : (
@@ -628,7 +633,7 @@ export default function ProductsPage() {
                             </Link>
 
                             {/* Edit Batch */}
-                            {!isCancelled && (
+                            {!isCancelled && !isViewer && canCreateProductBatch && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -641,7 +646,7 @@ export default function ProductsPage() {
                             )}
 
                             {/* Cancel Batch */}
-                            {!isCancelled && (
+                            {!isCancelled && !isViewer && canCreateProductBatch && (
                               <Button
                                 variant="ghost"
                                 size="sm"

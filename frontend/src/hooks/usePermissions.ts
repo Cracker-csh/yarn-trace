@@ -24,8 +24,11 @@ export function usePermissions() {
   const canAddOpeningStock = !isViewer && (isAdmin || hasPermission(["inventory.add_opening", "add_yarn"]));
   const canAllocateToFloor = !isViewer && (isAdmin || hasPermission(["inventory.issue", "issue_yarn", "manage_production", "production.create"]));
   const canManageParties = !isViewer && (isAdmin || hasPermission(["manage_parties", "manage_suppliers"]));
+  const canManagePurchaseOrders = !isViewer && (isAdmin || hasPermission(["manage_purchase_orders", "purchase_orders.create"]));
   const canCreateWorkOrder = !isViewer && (isAdmin || hasPermission(["production.create", "manage_production"]));
+  const canManageTeams = !isViewer && (isAdmin || hasPermission(["production.manage_teams", "manage_production"]));
   const canExecuteProduction = !isViewer && (isAdmin || hasPermission(["production.consume", "record_consumption", "production.output"]));
+  const canCreateProductBatch = !isViewer && (isAdmin || hasPermission(["products.create", "manage_production"]));
 
   return {
     user,
@@ -38,7 +41,10 @@ export function usePermissions() {
     canAddOpeningStock,
     canAllocateToFloor,
     canManageParties,
+    canManagePurchaseOrders,
     canCreateWorkOrder,
+    canManageTeams,
     canExecuteProduction,
+    canCreateProductBatch,
   };
 }

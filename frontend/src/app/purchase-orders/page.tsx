@@ -44,12 +44,14 @@ import {
   UpdatePOInput,
 } from "../../types/purchase-order";
 import dynamic from "next/dynamic";
+import { usePermissions } from "../../hooks/usePermissions";
 const CreatePOModal = dynamic(() => import("../../components/purchase-orders/CreatePOModal"), { ssr: false });
 const CancelPOModal = dynamic(() => import("../../components/purchase-orders/CancelPOModal"), { ssr: false });
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { canManagePurchaseOrders, isViewer } = usePermissions();
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState("");
@@ -245,18 +247,20 @@ export default function PurchaseOrdersPage() {
               />
               <span className="hidden sm:inline">Sync</span>
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setEditingPO(null);
-                setIsCreateModalOpen(true);
-              }}
-              className="gap-1.5 h-9"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Purchase Order</span>
-            </Button>
+            {canManagePurchaseOrders && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setEditingPO(null);
+                  setIsCreateModalOpen(true);
+                }}
+                className="gap-1.5 h-9"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Purchase Order</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -588,7 +592,7 @@ export default function PurchaseOrdersPage() {
                             >
                               <ChevronRight className="h-4 w-4" />
                             </button>
-                            {!isCancelled && (
+                            {!isCancelled && !isViewer && canManagePurchaseOrders && (
                               <>
                                 <button
                                   onClick={() => {
@@ -622,11 +626,15 @@ export default function PurchaseOrdersPage() {
               title="No purchase orders registered yet"
               description="Add purchase orders with yarn requirements to track end-to-end order execution and 103% issue limits."
               icon={ShoppingCart}
-              actionLabel="+ Create Purchase Order"
-              onAction={() => {
-                setEditingPO(null);
-                setIsCreateModalOpen(true);
-              }}
+              actionLabel={canManagePurchaseOrders ? "+ Create Purchase Order" : undefined}
+              onAction={
+                canManagePurchaseOrders
+                  ? () => {
+                      setEditingPO(null);
+                      setIsCreateModalOpen(true);
+                    }
+                  : undefined
+              }
             />
           )}
         </CardContent>

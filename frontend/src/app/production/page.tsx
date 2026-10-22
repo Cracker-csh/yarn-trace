@@ -46,8 +46,10 @@ const WorkOrderModal = dynamic(() => import("../../components/production/WorkOrd
 const WorkOrderDetailModal = dynamic(() => import("../../components/production/WorkOrderDetailModal"), { ssr: false });
 const AllocateYarnModal = dynamic(() => import("../../components/production/AllocateYarnModal"), { ssr: false });
 import ProductionKanbanBoard from "../../components/kanban/ProductionKanbanBoard";
+import { usePermissions } from "../../hooks/usePermissions";
 
 export default function ProductionPage() {
+  const { canCreateWorkOrder, canManageTeams, isViewer } = usePermissions();
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
 
   // Toast Notification State
@@ -221,27 +223,31 @@ export default function ProductionPage() {
               </button>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsTeamsModalOpen(true)}
-              className="gap-1.5 h-8 text-xs"
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>Teams</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setOrderToEdit(null);
-                setIsWorkOrderModalOpen(true);
-              }}
-              className="gap-1.5 h-8 text-xs font-semibold"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Work Order</span>
-            </Button>
+            {canManageTeams && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsTeamsModalOpen(true)}
+                className="gap-1.5 h-8 text-xs"
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span>Teams</span>
+              </Button>
+            )}
+            {canCreateWorkOrder && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setOrderToEdit(null);
+                  setIsWorkOrderModalOpen(true);
+                }}
+                className="gap-1.5 h-8 text-xs font-semibold"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Work Order</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -415,7 +421,7 @@ export default function ProductionPage() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
-                          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
+                          {!isViewer && canCreateWorkOrder && order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
                             <Button
                               variant="outline"
                               size="sm"
