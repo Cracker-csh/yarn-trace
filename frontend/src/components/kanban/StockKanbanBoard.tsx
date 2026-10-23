@@ -993,7 +993,13 @@ export default function StockKanbanBoard({
                 </div>
                 <div>
                   <span className="text-slate-400 block uppercase tracking-wider text-[10px]">Status</span>
-                  <Badge variant="outline" className="mt-1 font-semibold">{selectedDetailItem.status}</Badge>
+                  {selectedDetailItem.type === "ISSUE" ? (
+                    <Badge variant="outline" className="mt-1 font-semibold text-amber-700 bg-amber-50 border-amber-200">
+                      ISSUED (PENDING ASSIGN)
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="mt-1 font-semibold">{selectedDetailItem.status}</Badge>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-400 block uppercase tracking-wider text-[10px]">Net Quantity</span>
@@ -1008,12 +1014,38 @@ export default function StockKanbanBoard({
                   </span>
                 </div>
               </div>
+
+              {selectedDetailItem.type === "ISSUE" && (
+                <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2">
+                  <Factory className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Issued from Warehouse to Factory Floor</p>
+                    <p className="text-[11px] text-amber-700 mt-0.5">
+                      This yarn has been issued to the {selectedDetailItem.locationOrDepartment || "production"} floor and is waiting to be linked to a specific work order.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setSelectedDetailItem(null)}>
                 Close
               </Button>
+              {selectedDetailItem.type === "ISSUE" && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    const item = selectedDetailItem;
+                    setSelectedDetailItem(null);
+                    openAssignOrderModal(item);
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                >
+                  <Factory className="h-4 w-4" />
+                  <span>Assign to Work Order</span>
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
