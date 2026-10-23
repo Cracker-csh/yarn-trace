@@ -84,28 +84,49 @@ export default function IssueStockModal({
   const watchedPurpose = watch("purpose");
   const watchedKilos = watch("kilos");
 
+  const populateLotFields = (lot: LotRecord | null | undefined) => {
+    if (!lot) return;
+    setValue("lotNumber", lot.lotNumber);
+    setValue("count", lot.count);
+    if (lot.party?.id) {
+      setValue("partyId", lot.party.id);
+    }
+    if (lot.currentWeightKg > 0) {
+      setValue("kilos", Number(lot.currentWeightKg));
+    }
+    if (lot.currentBags > 0) {
+      setValue("bags", Number(lot.currentBags));
+    }
+
+    const detectedPurpose = (lot as any).purpose || (lot.count?.toLowerCase().includes("knit") ? "KNITTING" : "KNITTING");
+    setValue("purpose", detectedPurpose);
+
+    // Auto-link PO if requirement matches yarn count
+    const matchReq = poRequirements.find((r) =>
+      r.yarnCount && lot.count && r.yarnCount.toLowerCase().includes(lot.count.toLowerCase())
+    );
+    if (matchReq?.poNumber) {
+      setValue("poNumber", matchReq.poNumber);
+      if (matchReq.purpose) {
+        setValue("purpose", matchReq.purpose);
+      }
+    }
+  };
+
   // When preselected lot changes
   useEffect(() => {
     if (preselectedLot) {
       setSelectedLotState(preselectedLot);
-      setValue("lotNumber", preselectedLot.lotNumber);
-      setValue("count", preselectedLot.count);
-      if (preselectedLot.party?.id) {
-        setValue("partyId", preselectedLot.party.id);
-      }
+      populateLotFields(preselectedLot);
     }
-  }, [preselectedLot, setValue]);
+  }, [preselectedLot, setValue, poRequirements]);
 
   // When lot selection changes in dropdown
   const handleLotSelect = (lotNum: string) => {
     const found = lots.find((l) => l.lotNumber === lotNum);
     setSelectedLotState(found || null);
     if (found) {
-      setValue("lotNumber", found.lotNumber);
-      setValue("count", found.count);
-      if (found.party?.id) {
-        setValue("partyId", found.party.id);
-      }
+      populateLotFields(found);
     }
   };
 

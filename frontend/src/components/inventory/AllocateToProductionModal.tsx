@@ -63,26 +63,33 @@ export default function AllocateToProductionModal({
   }, [lots]);
 
   // Fetch Production Teams
-  const { data: teams = [] } = useQuery<ProductionTeam[]>({
+  const { data: teamsData } = useQuery({
     queryKey: ["production", "teams"],
     queryFn: async () => {
       const res = await apiClient.get("/production/teams");
-      return res.data.data || [];
+      return res.data;
     },
     enabled: isOpen,
     staleTime: 60_000,
   });
+
+  const teams: ProductionTeam[] = useMemo(() => {
+    if (Array.isArray(teamsData)) return teamsData;
+    if (Array.isArray((teamsData as any)?.data)) return (teamsData as any).data;
+    return [];
+  }, [teamsData]);
 
   // Fetch Active Work Orders
   const { data: ordersResponse } = useQuery({
     queryKey: ["production", "orders", "active"],
     queryFn: async () => {
       const res = await apiClient.get("/production/orders?limit=50");
-      return res.data.data;
+      return res.data;
     },
     enabled: isOpen,
     staleTime: 30_000,
   });
+
   const activeOrders: ProductionOrder[] = useMemo(() => {
     const list: ProductionOrder[] = Array.isArray(ordersResponse)
       ? ordersResponse
@@ -92,25 +99,69 @@ export default function AllocateToProductionModal({
     );
   }, [ordersResponse]);
 
-  // Pre-fill when opened with a preselected lot
-  useEffect(() => {
-    if (preselectedLot) {
-      setSelectedLotId(preselectedLot.id);
-      setAllocatedKg(String(preselectedLot.currentWeightKg));
-      setBags(String(preselectedLot.currentBags || 1));
-    } else if (availableLots.length > 0 && !selectedLotId) {
-      setSelectedLotId(availableLots[0].id);
-      setAllocatedKg(String(availableLots[0].currentWeightKg));
-      setBags(String(availableLots[0].currentBags || 1));
-    }
-  }, [preselectedLot, availableLots, isOpen]);
+  // Smart auto-fill function for lot
+  const applySmartAutoFill = (lot: LotRecord | undefined, availableTeams: ProductionTeam[], orders: ProductionOrder[]) => {
+    if (!lot) return;
+    setAllocatedKg(String(lot.currentWeightKg));
+    setBags(String(lot.currentBags || 1));
+    const lotPurpose = (lot as any).purpose || (lot.count?.toLowerCase().includes("knit") ? "KNITTING" : "KNITTING");
+    setPurpose(lotPurpose);
+    setRemarks(`Floor allocation for ${lot.lotNumber} (${lot.count || "Yarn Stock"})`);
 
-  // Pre-fill default team
-  useEffect(() => {
-    if (teams.length > 0 && !selectedTeamId) {
-      setSelectedTeamId(teams[0].id);
+    // Check if an order matches
+    const matchingOrder = orders.find(
+      (o) =>
+        (o.productName && lot.count && o.productName.toLowerCase().includes(lot.count.toLowerCase())) ||
+        (o.purpose && o.purpose.toUpperCase() === lotPurpose.toUpperCase())
+    );
+
+    if (matchingOrder) {
+      setSelectedOrderId(matchingOrder.id);
+      const teamId = matchingOrder.productionTeam?.id || (matchingOrder as any).productionTeamId;
+      if (teamId) {
+        setSelectedTeamId(teamId);
+        return;
+      }
     }
-  }, [teams]);
+
+    // Match team by department
+    if (availableTeams.length > 0) {
+      const matchingTeam = availableTeams.find(
+        (t) => t.department?.toUpperCase() === lotPurpose.toUpperCase()
+      );
+      if (matchingTeam) {
+        setSelectedTeamId(matchingTeam.id);
+      } else {
+        setSelectedTeamId(availableTeams[0].id);
+      }
+    }
+  };
+
+  // Pre-fill when opened or when dependencies load
+  useEffect(() => {
+    const targetLot = preselectedLot || (availableLots.length > 0 ? availableLots[0] : null);
+    if (targetLot) {
+      setSelectedLotId(targetLot.id);
+      applySmartAutoFill(targetLot, teams, activeOrders);
+    }
+  }, [preselectedLot, availableLots, isOpen, teams.length, activeOrders.length]);
+
+  // Handle manual order selection and auto-fill team & remarks
+  const handleOrderSelect = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    if (!orderId) return;
+    const order = activeOrders.find((o) => o.id === orderId);
+    if (order) {
+      const teamId = order.productionTeam?.id || (order as any).productionTeamId;
+      if (teamId) {
+        setSelectedTeamId(teamId);
+      }
+      setRemarks(`Allocation for ${order.orderNumber} (${order.productName || "Work Order"})`);
+      if (order.purpose) {
+        setPurpose(order.purpose);
+      }
+    }
+  };
 
   const currentLot = useMemo(() => {
     return availableLots.find((l) => l.id === selectedLotId);
@@ -239,8 +290,7 @@ export default function AllocateToProductionModal({
                 setSelectedLotId(e.target.value);
                 const l = availableLots.find((lot) => lot.id === e.target.value);
                 if (l) {
-                  setAllocatedKg(String(l.currentWeightKg));
-                  setBags(String(l.currentBags || 1));
+                  applySmartAutoFill(l, teams, activeOrders);
                 }
               }}
               className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-mono disabled:bg-slate-100 disabled:text-slate-400"
@@ -324,14 +374,16 @@ export default function AllocateToProductionModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="alloc-team" className="text-xs font-semibold text-slate-700 mb-1.5 block">
-                Target Team / Department
+                Target Team / Department <span className="text-red-500">*</span>
               </Label>
               <select
                 id="alloc-team"
                 value={selectedTeamId}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                required
               >
+                <option value="">-- Select Target Team / Department --</option>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name} ({t.department})
@@ -347,8 +399,8 @@ export default function AllocateToProductionModal({
               <select
                 id="alloc-order"
                 value={selectedOrderId}
-                onChange={(e) => setSelectedOrderId(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                onChange={(e) => handleOrderSelect(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
               >
                 <option value="">-- General Floor Allocation --</option>
                 {activeOrders.map((o) => (

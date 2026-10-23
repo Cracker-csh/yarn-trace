@@ -171,7 +171,35 @@ export default function CreatePOModal({
   ) => {
     setRequirements((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
+      const updated = { ...next[index], [field]: value };
+
+      // Smart auto-fill when yarnCount is typed or selected
+      if (field === "yarnCount" && typeof value === "string") {
+        const val = value.toLowerCase();
+        if (!updated.quality) {
+          if (val.includes("combed") || val.includes("cotton") || val.includes("30s") || val.includes("40s")) {
+            updated.quality = "100% Combed Cotton";
+          } else if (val.includes("pc")) {
+            updated.quality = "65/35 Poly Cotton";
+          } else if (val.includes("modal")) {
+            updated.quality = "100% Modal";
+          } else if (val.includes("oe") || val.includes("kw")) {
+            updated.quality = "100% Carded Open End";
+          }
+        }
+        if (!updated.purpose || updated.purpose === "PILE") {
+          if (val.includes("knit") || val.includes("30s") || val.includes("40s")) {
+            updated.purpose = "KNITTING";
+          }
+        }
+        if (!updated.useFor) {
+          if (val.includes("knit") || val.includes("30s") || val.includes("40s")) {
+            updated.useFor = "Single Jersey Fabric";
+          }
+        }
+      }
+
+      next[index] = updated;
       return next;
     });
   };
