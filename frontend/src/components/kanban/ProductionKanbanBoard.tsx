@@ -155,7 +155,9 @@ export default function ProductionKanbanBoard({
     staleTime: 30_000,
   });
 
-  const orders: ProductionOrder[] = ordersResponse?.items || [];
+  const orders: ProductionOrder[] = Array.isArray(ordersResponse)
+    ? ordersResponse
+    : ordersResponse?.data || ordersResponse?.items || [];
 
   // Fetch Parties for Work Order Modal
   const { data: parties = [] } = useQuery<Party[]>({

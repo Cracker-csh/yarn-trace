@@ -84,7 +84,10 @@ export default function AllocateToProductionModal({
     staleTime: 30_000,
   });
   const activeOrders: ProductionOrder[] = useMemo(() => {
-    return (ordersResponse?.items || []).filter(
+    const list: ProductionOrder[] = Array.isArray(ordersResponse)
+      ? ordersResponse
+      : ordersResponse?.data || ordersResponse?.items || [];
+    return list.filter(
       (o: ProductionOrder) => o.status === "PLANNED" || o.status === "IN_PROGRESS"
     );
   }, [ordersResponse]);

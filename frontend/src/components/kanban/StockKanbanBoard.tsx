@@ -186,7 +186,9 @@ export default function StockKanbanBoard({
     },
     staleTime: 30_000,
   });
-  const orders: ProductionOrder[] = ordersResponse?.items || [];
+  const orders: ProductionOrder[] = Array.isArray(ordersResponse)
+    ? ordersResponse
+    : ordersResponse?.data || ordersResponse?.items || [];
 
   // Eligible Issues
   const { data: eligibleIssues = [], refetch: refetchIssues } = useQuery({
@@ -878,6 +880,15 @@ export default function StockKanbanBoard({
                       </option>
                     ))}
                 </select>
+                {orders.filter((o) => o.status === "PLANNED" || o.status === "IN_PROGRESS" || o.status === "DRAFT").length === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1.5 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span>No active work orders found. You can create one from the </span>
+                    <a href="/production" className="underline font-bold text-amber-900 hover:text-amber-950" target="_blank" rel="noreferrer">
+                      Production Page →
+                    </a>
+                  </p>
+                )}
               </div>
 
               {/* Target Production Team */}
