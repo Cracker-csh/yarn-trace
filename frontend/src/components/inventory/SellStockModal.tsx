@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -73,8 +73,21 @@ export default function SellStockModal({
     if (found) {
       setValue("lotNumber", found.lotNumber);
       setValue("count", found.count);
+      if (found.currentWeightKg > 0) {
+        setValue("kilos", Number(found.currentWeightKg));
+      }
+      if (found.currentBags > 0) {
+        setValue("bags", Number(found.currentBags));
+      }
+      setValue("remarks", `Commercial external sale of lot ${found.lotNumber} (${found.count})`);
     }
   };
+
+  useEffect(() => {
+    if (preselectedLot) {
+      handleLotSelect(preselectedLot.lotNumber);
+    }
+  }, [preselectedLot, lots]);
 
   const handleFormSubmit = async (values: SellFormValues) => {
     await onSubmit(values);

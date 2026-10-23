@@ -211,14 +211,20 @@ export default function StockKanbanBoard({
   });
 
   // Production Teams Master
-  const { data: teams = [] } = useQuery<ProductionTeam[]>({
+  const { data: teamsData } = useQuery({
     queryKey: ["production", "teams"],
     queryFn: async () => {
       const res = await apiClient.get("/production/teams");
-      return res.data.data || [];
+      return res.data;
     },
     staleTime: 60_000,
   });
+
+  const teams: ProductionTeam[] = useMemo(() => {
+    if (Array.isArray(teamsData)) return teamsData;
+    if (Array.isArray((teamsData as any)?.data)) return (teamsData as any).data;
+    return [];
+  }, [teamsData]);
 
   // Assign Issued Stock to Work Order State
   const [assignOrderDialog, setAssignOrderDialog] = useState<KanbanItem | null>(null);
@@ -232,7 +238,6 @@ export default function StockKanbanBoard({
     setAssignOrderDialog(item);
     setAssignKg(String(item.weightKg));
     setAssignBags(String(item.bagsCount || 0));
-    setAssignNotes("");
 
     const activeOrders = orders.filter(
       (o) => o.status === "PLANNED" || o.status === "IN_PROGRESS" || o.status === "DRAFT"
@@ -244,11 +249,13 @@ export default function StockKanbanBoard({
       } else if (teams.length > 0) {
         setSelectedTeamIdForAssign(teams[0].id);
       }
+      setAssignNotes(`Allocation for ${activeOrders[0].orderNumber} - ${activeOrders[0].productName || "Shift A"}`);
     } else {
       setSelectedOrderIdForAssign("");
       if (teams.length > 0) {
         setSelectedTeamIdForAssign(teams[0].id);
       }
+      setAssignNotes(`Floor allocation for ${item.title || "Yarn Stock"}`);
     }
   };
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -62,6 +62,27 @@ export default function RetireStockModal({
     },
   });
 
+  const populateRetireLot = (lotNum: string) => {
+    setValue("lotNumber", lotNum);
+    const found = lots.find((l) => l.lotNumber === lotNum);
+    if (found) {
+      if (found.currentWeightKg > 0) {
+        setValue("kilos", Number(found.currentWeightKg));
+      }
+      if (found.currentBags > 0) {
+        setValue("bags", Number(found.currentBags));
+      }
+      setValue("referenceNumber", `QA-SCRAP-${found.lotNumber.slice(-4)}`);
+      setValue("reason", `Quality inspection rejection / damage write-off for lot ${found.lotNumber}`);
+    }
+  };
+
+  useEffect(() => {
+    if (preselectedLot) {
+      populateRetireLot(preselectedLot.lotNumber);
+    }
+  }, [preselectedLot, lots]);
+
   const handleFormSubmit = async (values: RetireFormValues) => {
     await onSubmit(values);
     reset();
@@ -95,7 +116,7 @@ export default function RetireStockModal({
             <select
               id="retire-lot"
               defaultValue={preselectedLot?.lotNumber || ""}
-              onChange={(e) => setValue("lotNumber", e.target.value)}
+              onChange={(e) => populateRetireLot(e.target.value)}
               className="w-full text-xs h-10 px-3 rounded-lg border border-slate-300 bg-slate-50/60 hover:bg-slate-50 focus:bg-white text-slate-800 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 shadow-sm"
             >
               <option value="">-- Choose Lot --</option>

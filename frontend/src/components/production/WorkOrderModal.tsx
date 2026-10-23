@@ -48,6 +48,20 @@ export default function WorkOrderModal({
   const [status, setStatus] = useState<ProductionOrderStatus>("PLANNED");
   const [remarks, setRemarks] = useState("");
 
+  const handlePurposeChange = (newPurpose: string) => {
+    setPurpose(newPurpose);
+    const matchingTeam = teams.find((t) => t.department?.toUpperCase() === newPurpose.toUpperCase());
+    if (matchingTeam) {
+      setProductionTeamId(matchingTeam.id);
+    }
+    if (!productName || productName.includes("Fabric") || productName.includes("Towel") || productName.includes("Beam") || productName.includes("Package")) {
+      if (newPurpose === "KNITTING") setProductName("100% Cotton Single Jersey Fabric");
+      else if (newPurpose === "WEAVING") setProductName("100% Cotton Terry Towel");
+      else if (newPurpose === "WARPING") setProductName("Warped Beam 40s Cotton");
+      else if (newPurpose === "SPINNING") setProductName("Spun Yarn Package");
+    }
+  };
+
   useEffect(() => {
     if (orderToEdit) {
       setOrderNumber(orderToEdit.orderNumber);
@@ -69,12 +83,14 @@ export default function WorkOrderModal({
       setTargetQuantity("");
       setUnit("KG");
       setPriority("MEDIUM");
-      setPurpose("WEAVING");
-      setProductName("");
+      const defaultPurpose = "KNITTING";
+      setPurpose(defaultPurpose);
+      setProductName("100% Cotton Single Jersey Fabric");
       setProductType("FABRIC_ROLL");
       setPoNumber("");
       setPartyId("");
-      setProductionTeamId(teams[0]?.id || "");
+      const initialTeam = teams.find((t) => t.department?.toUpperCase() === defaultPurpose) || teams[0];
+      setProductionTeamId(initialTeam?.id || "");
       setStartDate(new Date().toISOString().split("T")[0]);
       setTargetDate("");
       setStatus("PLANNED");
@@ -281,7 +297,7 @@ export default function WorkOrderModal({
               </label>
               <select
                 value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
+                onChange={(e) => handlePurposeChange(e.target.value)}
                 className="w-full h-9 px-3 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
               >
                 <option value="WEAVING">Weaving</option>
