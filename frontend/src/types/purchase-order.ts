@@ -18,6 +18,9 @@ export type RequirementStatus =
   | "CANCELLED";
 
 export type PurposeType =
+  | "KNITTING"
+  | "WEAVING"
+  | "WARPING"
   | "PILE"
   | "GROUND"
   | "WEFT"

@@ -284,6 +284,9 @@ export default function IssueStockModal({
                 {...register("purpose")}
                 className="w-full text-xs h-10 px-3 rounded-lg border border-slate-300 bg-slate-50/60 hover:bg-slate-50 focus:bg-white text-slate-800 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 shadow-sm"
               >
+                <option value="KNITTING">KNITTING</option>
+                <option value="WEAVING">WEAVING</option>
+                <option value="WARPING">WARPING</option>
                 <option value="PILE">PILE</option>
                 <option value="GROUND">GROUND</option>
                 <option value="WEFT">WEFT</option>

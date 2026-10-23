@@ -14,7 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export const ALLOWED_PURPOSES = ['PILE', 'GROUND', 'WEFT', 'DYED', 'NPD', 'GENERAL'] as const;
+export const ALLOWED_PURPOSES = ['KNITTING', 'WEAVING', 'WARPING', 'PILE', 'GROUND', 'WEFT', 'DYED', 'NPD', 'GENERAL'] as const;
 export type AllowedPurpose = typeof ALLOWED_PURPOSES[number];
 
 export class CreatePORequirementDto {

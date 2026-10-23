@@ -46,7 +46,7 @@ const COMMON_COUNTS = [
   "30s Modal",
 ];
 
-const PURPOSES = ["PILE", "GROUND", "WEFT", "DYED", "NPD", "GENERAL"];
+const PURPOSES = ["KNITTING", "WEAVING", "WARPING", "PILE", "GROUND", "WEFT", "DYED", "NPD", "GENERAL"];
 
 const EMPTY_LINE: CreatePORequirementInput = {
   yarnCount: "",

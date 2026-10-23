@@ -134,6 +134,9 @@ export default function InventoryFilterBar({
             className="w-full text-xs h-9 px-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="">All Purposes</option>
+            <option value="KNITTING">KNITTING</option>
+            <option value="WEAVING">WEAVING</option>
+            <option value="WARPING">WARPING</option>
             <option value="PILE">PILE</option>
             <option value="GROUND">GROUND</option>
             <option value="WEFT">WEFT</option>
