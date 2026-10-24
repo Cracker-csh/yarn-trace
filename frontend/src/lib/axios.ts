@@ -1,38 +1,41 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 /**
- * Dynamically resolves the API Base URL based on runtime execution context:
- * 1. Mobile / Remote Tunnel: If running in browser and hostname is not localhost,
- *    uses configured public HTTPS URL or same-origin '/api/v1' (via Next.js reverse proxy).
- * 2. Laptop / Desktop Localhost: Uses direct local backend http://localhost:4000/api/v1.
- * 3. Server-Side Rendering (SSR): Uses configured URL or localhost fallback.
+ * Resolve the YarnTrace API base URL.
+ *
+ * Local development:
+ *   http://localhost:4000/api/v1
+ *
+ * Production:
+ *   NEXT_PUBLIC_API_URL
+ *
+ * Browser fallback:
+ *   same-origin /api/v1
  */
 export const getApiBaseUrl = (): string => {
   const rawEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-  // Running inside client-side browser:
+  // Browser/client-side execution
   if (typeof window !== "undefined") {
-    const isLocalhost =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
+    const hostname = window.location.hostname;
 
-    // 1. When running on local machine (localhost / 127.0.0.1):
-    // Always use local backend directly
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+
+    // Local development
     if (isLocalhost) {
       return "http://localhost:4000/api/v1";
     }
 
-    // 2. Direct Cloud Backend: If an explicit public API URL is configured (e.g. Railway or custom domain),
-    // connect directly to bypass intermediate serverless proxies and drastically reduce network latency
+    // Explicit public API URL
     if (rawEnv && rawEnv.startsWith("http") && !rawEnv.includes("trycloudflare.com")) {
       return rawEnv.replace(/\/+$/, "");
     }
 
-    // 3. Fallback to same-origin relative path '/api/v1' (routed via Next.js reverse-proxy rewrites)
+    // Same-origin reverse-proxy fallback
     return `${window.location.origin}/api/v1`;
   }
 
-  // Server-Side Rendering (SSR) fallback
+  // Server-side rendering
   if (rawEnv && !rawEnv.includes(",") && !rawEnv.includes("trycloudflare.com")) {
     return rawEnv.replace(/\/+$/, "");
   }
@@ -49,136 +52,189 @@ export const apiClient = axios.create({
 });
 
 let isRefreshing = false;
+
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
   reject: (reason?: unknown) => void;
 }> = [];
 
 const processQueue = (error: Error | null, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
+  failedQueue.forEach((promise) => {
     if (error) {
-      prom.reject(error);
+      promise.reject(error);
     } else {
-      prom.resolve(token);
+      promise.resolve(token);
     }
   });
+
   failedQueue = [];
 };
 
-// Request Interceptor: Dynamically resolve baseURL and attach Access Token
+/**
+ * Request interceptor
+ *
+ * Dynamically resolves the API URL and attaches
+ * the current access token when available.
+ */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     config.baseURL = getApiBaseUrl();
 
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("yarntrace_access_token");
+
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Auto-Refresh on 401
+/**
+ * Response interceptor
+ *
+ * Automatically refreshes the access token when
+ * the backend returns HTTP 401.
+ */
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
 
-    if (!error.response || error.response.status !== 401 || originalRequest._retry) {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & {
+          _retry?: boolean;
+        })
+      | undefined;
+
+    // Not a 401 or request already retried
+    if (
+      !error.response ||
+      error.response.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 
+    /**
+     * Another request is already refreshing the token.
+     * Queue this request until the refresh finishes.
+     */
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
+        failedQueue.push({
+          resolve,
+          reject,
+        });
       })
         .then((token) => {
           if (originalRequest.headers && token) {
             originalRequest.headers.Authorization = `Bearer ${token}`;
           }
+
           originalRequest._retry = true;
+
           return apiClient(originalRequest);
         })
-        .catch((err) => Promise.reject(err));
+        .catch((refreshError) => {
+          return Promise.reject(refreshError);
+        });
     }
 
     originalRequest._retry = true;
     isRefreshing = true;
 
+    // Refresh only makes sense in the browser
     if (typeof window === "undefined") {
+      isRefreshing = false;
       return Promise.reject(error);
     }
 
     const currentBaseUrl = getApiBaseUrl();
+
     const refreshToken = localStorage.getItem("yarntrace_refresh_token");
 
-    // 1. Try Refresh Token
-    if (refreshToken) {
-      try {
-        const response = await axios.post(`${currentBaseUrl}/auth/refresh`, {
-          refreshToken,
-        });
+    /**
+     * No refresh token:
+     * clear the local session and send the user
+     * back to the login page.
+     */
+    if (!refreshToken) {
+      isRefreshing = false;
 
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } =
-          response.data.data;
+      localStorage.removeItem("yarntrace_access_token");
 
-        localStorage.setItem("yarntrace_access_token", newAccessToken);
-        localStorage.setItem("yarntrace_refresh_token", newRefreshToken);
-        if (user) {
-          localStorage.setItem("yarntrace_user", JSON.stringify(user));
-        }
+      localStorage.removeItem("yarntrace_refresh_token");
 
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
+      localStorage.removeItem("yarntrace_user");
 
-        processQueue(null, newAccessToken);
-        return apiClient(originalRequest);
-      } catch {
-        // Refresh token failed, proceed to dev fallback or login redirect
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
       }
+
+      return Promise.reject(error);
     }
 
-    // 2. Dev-mode automatic session recovery (seamless testing without disruptions)
     try {
-      const loginRes = await axios.post(`${currentBaseUrl}/auth/login`, {
-        email: "admin@yarntrace.com",
-        password: "Password123!",
+      /**
+       * Refresh the access token.
+       */
+      const response = await axios.post(`${currentBaseUrl}/auth/refresh`, {
+        refreshToken,
       });
 
-      const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } =
-        loginRes.data.data;
+      const {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        user,
+      } = response.data.data;
 
       localStorage.setItem("yarntrace_access_token", newAccessToken);
+
       localStorage.setItem("yarntrace_refresh_token", newRefreshToken);
+
       if (user) {
         localStorage.setItem("yarntrace_user", JSON.stringify(user));
       }
 
+      /**
+       * Attach the new access token to the
+       * original failed request.
+       */
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       }
 
+      /**
+       * Release queued requests.
+       */
       processQueue(null, newAccessToken);
+
+      /**
+       * Retry the original request.
+       */
       return apiClient(originalRequest);
-    } catch (loginErr) {
-      processQueue(loginErr as Error, null);
+    } catch (refreshError) {
+      /**
+       * Refresh token is invalid/expired.
+       * There is NO automatic admin login fallback.
+       */
+      processQueue(refreshError as Error, null);
+
       localStorage.removeItem("yarntrace_access_token");
+
       localStorage.removeItem("yarntrace_refresh_token");
+
       localStorage.removeItem("yarntrace_user");
 
-      if (
-        typeof window !== "undefined" &&
-        !window.location.pathname.startsWith("/login")
-      ) {
+      if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login";
       }
-      return Promise.reject(loginErr);
+
+      return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
     }

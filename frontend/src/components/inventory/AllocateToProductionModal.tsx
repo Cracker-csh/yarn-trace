@@ -100,24 +100,37 @@ export default function AllocateToProductionModal({
   }, [ordersResponse]);
 
   // Smart auto-fill function for lot
-  const applySmartAutoFill = (lot: LotRecord | undefined, availableTeams: ProductionTeam[], orders: ProductionOrder[]) => {
+  const applySmartAutoFill = (
+    lot: LotRecord | undefined,
+    availableTeams: ProductionTeam[],
+    orders: ProductionOrder[]
+  ) => {
     if (!lot) return;
     setAllocatedKg(String(lot.currentWeightKg));
     setBags(String(lot.currentBags || 1));
-    const lotPurpose = (lot as any).purpose || (lot.count?.toLowerCase().includes("knit") ? "KNITTING" : "KNITTING");
+    const lotPurpose =
+      (lot as any).purpose || (lot.count?.toLowerCase().includes("knit") ? "KNITTING" : "KNITTING");
     setPurpose(lotPurpose);
     setRemarks(`Floor allocation for ${lot.lotNumber} (${lot.count || "Yarn Stock"})`);
 
     // Check if an order matches
     const matchingOrder = orders.find(
       (o) =>
-        (o.productName && lot.count && o.productName.toLowerCase().includes(lot.count.toLowerCase())) ||
+        (o.productName &&
+          lot.count &&
+          o.productName.toLowerCase().includes(lot.count.toLowerCase())) ||
         (o.purpose && o.purpose.toUpperCase() === lotPurpose.toUpperCase())
     );
 
     if (matchingOrder) {
       setSelectedOrderId(matchingOrder.id);
+
+      // Remarks should reference the Production Work Order,
+      // not the source yarn lot.
+      setRemarks(`Allocation for ${matchingOrder.orderNumber}`);
+
       const teamId = matchingOrder.productionTeam?.id || (matchingOrder as any).productionTeamId;
+
       if (teamId) {
         setSelectedTeamId(teamId);
         return;
@@ -180,7 +193,10 @@ export default function AllocateToProductionModal({
       return;
     }
     if (availableWeight <= 0) {
-      onShowToast("error", `Lot "${currentLot.lotNumber}" has already been exhausted (0.00 KG available).`);
+      onShowToast(
+        "error",
+        `Lot "${currentLot.lotNumber}" has already been exhausted (0.00 KG available).`
+      );
       return;
     }
     if (requestedWeight <= 0) {
@@ -188,7 +204,10 @@ export default function AllocateToProductionModal({
       return;
     }
     if (isOverAllocated) {
-      onShowToast("error", `Requested weight (${requestedWeight} KG) exceeds available store balance (${availableWeight} KG).`);
+      onShowToast(
+        "error",
+        `Requested weight (${requestedWeight} KG) exceeds available store balance (${availableWeight} KG).`
+      );
       return;
     }
 
@@ -210,7 +229,9 @@ export default function AllocateToProductionModal({
         bags: Number(bags) || 0,
         kilos: requestedWeight,
         purpose: purpose || "PRODUCTION_FLOOR",
-        remarks: remarks || `Allocated to ${teams.find((t) => t.id === selectedTeamId)?.name || "Production Floor"}`,
+        remarks:
+          remarks ||
+          `Allocated to ${teams.find((t) => t.id === selectedTeamId)?.name || "Production Floor"}`,
       });
 
       const issueTx = issueRes.data.data;
@@ -237,7 +258,10 @@ export default function AllocateToProductionModal({
       );
       onClose();
     } catch (err: any) {
-      onShowToast("error", err?.response?.data?.message || "Failed to complete allocation to production.");
+      onShowToast(
+        "error",
+        err?.response?.data?.message || "Failed to complete allocation to production."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -256,7 +280,8 @@ export default function AllocateToProductionModal({
                 Allocate Yarn to Production Floor
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Issue stock from warehouse store and assign it directly to a production work order or department team.
+                Issue stock from warehouse store and assign it directly to a production work order
+                or department team.
               </DialogDescription>
             </div>
           </div>
@@ -279,7 +304,10 @@ export default function AllocateToProductionModal({
 
           {/* Yarn Lot Selector */}
           <div>
-            <Label htmlFor="alloc-lot" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+            <Label
+              htmlFor="alloc-lot"
+              className="text-xs font-semibold text-slate-700 mb-1.5 block"
+            >
               Source Yarn Lot <span className="text-red-500">*</span>
             </Label>
             <select
@@ -300,7 +328,8 @@ export default function AllocateToProductionModal({
               ) : (
                 availableLots.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.lotNumber} | {l.count} | Avail: {Number(l.currentWeightKg).toFixed(1)} KG ({l.currentBags} bags)
+                    {l.lotNumber} | {l.count} | Avail: {Number(l.currentWeightKg).toFixed(1)} KG (
+                    {l.currentBags} bags)
                   </option>
                 ))
               )}
@@ -312,7 +341,9 @@ export default function AllocateToProductionModal({
             <div className="p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl text-xs space-y-1.5">
               <div className="flex justify-between items-center text-slate-600">
                 <span>Available in Store:</span>
-                <span className="font-mono font-bold text-slate-900">{availableWeight.toFixed(2)} KG</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {availableWeight.toFixed(2)} KG
+                </span>
               </div>
               <div className="flex justify-between items-center text-purple-700">
                 <span>Requested Allocation:</span>
@@ -320,7 +351,9 @@ export default function AllocateToProductionModal({
               </div>
               <div className="flex justify-between items-center pt-1 border-t border-purple-200 font-semibold">
                 <span className="text-slate-700">Remaining in Store:</span>
-                <span className={`font-mono ${isOverAllocated ? "text-red-600 font-bold" : "text-emerald-700"}`}>
+                <span
+                  className={`font-mono ${isOverAllocated ? "text-red-600 font-bold" : "text-emerald-700"}`}
+                >
                   {remainingWeight.toFixed(2)} KG
                 </span>
               </div>
@@ -336,7 +369,10 @@ export default function AllocateToProductionModal({
           {/* Quantity & Bags Inputs */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="alloc-kg" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="alloc-kg"
+                className="text-xs font-semibold text-slate-700 mb-1.5 block"
+              >
                 Quantity to Allocate (KG) <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -355,7 +391,10 @@ export default function AllocateToProductionModal({
             </div>
 
             <div>
-              <Label htmlFor="alloc-bags" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="alloc-bags"
+                className="text-xs font-semibold text-slate-700 mb-1.5 block"
+              >
                 Bags Count
               </Label>
               <Input
@@ -373,7 +412,10 @@ export default function AllocateToProductionModal({
           {/* Target Production Order & Team */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="alloc-team" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="alloc-team"
+                className="text-xs font-semibold text-slate-700 mb-1.5 block"
+              >
                 Target Team / Department <span className="text-red-500">*</span>
               </Label>
               <select
@@ -393,7 +435,10 @@ export default function AllocateToProductionModal({
             </div>
 
             <div>
-              <Label htmlFor="alloc-order" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+              <Label
+                htmlFor="alloc-order"
+                className="text-xs font-semibold text-slate-700 mb-1.5 block"
+              >
                 Link to Production Order (Optional)
               </Label>
               <select
@@ -414,7 +459,10 @@ export default function AllocateToProductionModal({
 
           {/* Remarks */}
           <div>
-            <Label htmlFor="alloc-remarks" className="text-xs font-semibold text-slate-700 mb-1.5 block">
+            <Label
+              htmlFor="alloc-remarks"
+              className="text-xs font-semibold text-slate-700 mb-1.5 block"
+            >
               Remarks / Purpose Notes
             </Label>
             <Input
@@ -427,13 +475,24 @@ export default function AllocateToProductionModal({
           </div>
 
           <DialogFooter className="pt-3">
-            <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting} className="h-10 text-xs">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 text-xs"
+            >
               Cancel
             </Button>
             <Button
               variant="primary"
               type="submit"
-              disabled={isSubmitting || isOverAllocated || requestedWeight <= 0 || availableLots.length === 0}
+              disabled={
+                isSubmitting ||
+                isOverAllocated ||
+                requestedWeight <= 0 ||
+                availableLots.length === 0
+              }
               className="h-10 text-xs font-semibold gap-1.5 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
             >
               {isSubmitting ? (
