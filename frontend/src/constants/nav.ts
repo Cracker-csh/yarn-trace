@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   FileClock,
   Kanban,
-  Settings,
 } from "lucide-react";
 import { NavItem } from "../types/navigation";
 
@@ -111,11 +110,5 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     icon: FileClock,
     section: "GOVERNANCE",
     requiredPermission: "view_audit_logs",
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    section: "GOVERNANCE",
   },
 ];
