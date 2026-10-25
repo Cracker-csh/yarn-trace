@@ -6,8 +6,21 @@ const initialState: AuthState = {
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  isInitialized: false,
   isLoading: false,
   error: null,
+};
+
+const setAuthCookie = (token: string) => {
+  if (typeof document !== "undefined") {
+    document.cookie = `yarntrace_access_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+  }
+};
+
+const clearAuthCookie = () => {
+  if (typeof document !== "undefined") {
+    document.cookie = `yarntrace_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  }
 };
 
 export const authSlice = createSlice({
@@ -29,6 +42,7 @@ export const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
       state.isAuthenticated = true;
+      state.isInitialized = true;
       state.isLoading = false;
       state.error = null;
 
@@ -36,11 +50,13 @@ export const authSlice = createSlice({
         localStorage.setItem("yarntrace_access_token", action.payload.accessToken);
         localStorage.setItem("yarntrace_refresh_token", action.payload.refreshToken);
         localStorage.setItem("yarntrace_user", JSON.stringify(action.payload.user));
+        setAuthCookie(action.payload.accessToken);
       }
     },
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+      state.isInitialized = true;
       if (typeof window !== "undefined") {
         localStorage.setItem("yarntrace_user", JSON.stringify(action.payload));
       }
@@ -54,6 +70,7 @@ export const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
+      state.isInitialized = true;
       state.isLoading = false;
       state.error = null;
 
@@ -61,6 +78,7 @@ export const authSlice = createSlice({
         localStorage.removeItem("yarntrace_access_token");
         localStorage.removeItem("yarntrace_refresh_token");
         localStorage.removeItem("yarntrace_user");
+        clearAuthCookie();
       }
     },
     initializeAuthFromStorage: (state) => {
@@ -75,13 +93,26 @@ export const authSlice = createSlice({
             state.accessToken = token;
             state.refreshToken = refreshToken;
             state.isAuthenticated = true;
+            setAuthCookie(token);
           } catch {
             localStorage.removeItem("yarntrace_access_token");
             localStorage.removeItem("yarntrace_refresh_token");
             localStorage.removeItem("yarntrace_user");
+            clearAuthCookie();
+            state.user = null;
+            state.accessToken = null;
+            state.refreshToken = null;
+            state.isAuthenticated = false;
           }
+        } else {
+          clearAuthCookie();
+          state.user = null;
+          state.accessToken = null;
+          state.refreshToken = null;
+          state.isAuthenticated = false;
         }
       }
+      state.isInitialized = true;
     },
   },
 });

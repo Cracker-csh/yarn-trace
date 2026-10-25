@@ -19,8 +19,8 @@ export default function AccessDenied({
 }: AccessDeniedProps) {
   const { user, roleCode } = usePermissions();
 
-  const roleName = user?.role?.name || roleCode || "Viewer";
-  const userEmail = user?.email || "viewer@yarntrace.com";
+  const roleName = user?.role?.name || roleCode || (user ? "Viewer" : "Guest / Not Signed In");
+  const userEmail = user?.email || "Not Signed In";
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
