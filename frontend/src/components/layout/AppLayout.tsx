@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import TopNav from "./TopNav";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -13,7 +13,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isMobileMenuOpen = useAppSelector((state) => state.ui.isMobileMenuOpen);
   const dispatch = useAppDispatch();
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
   const { isAdmin, hasPermission } = usePermissions();
+
+  // Strict Mode: Redirect immediately if unauthenticated
+  useEffect(() => {
+    if (isInitialized && (!isAuthenticated || !user)) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [isInitialized, isAuthenticated, user, router, pathname]);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -31,6 +40,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
+
+  // Strict Mode: Block rendering completely until verified & authenticated
+  if (!isInitialized || !isAuthenticated || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
+          <p className="text-xs font-semibold text-slate-700">Verifying security session...</p>
+          <p className="text-[11px] text-slate-400">Strict mode enabled — sign-in required.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Strict Route Permission Evaluation
   const getRouteRestriction = (path: string) => {

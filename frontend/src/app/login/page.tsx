@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Layers, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
-import { useAppDispatch } from "../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { setCredentials } from "../../store/slices/authSlice";
 import { apiClient } from "../../lib/axios";
 import { Button } from "../../components/ui/button";
@@ -23,9 +23,18 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isInitialized = useAppSelector((state) => state.auth.isInitialized);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // If already authenticated, redirect immediately to dashboard
+  React.useEffect(() => {
+    if (isInitialized && isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isInitialized, isAuthenticated, router]);
 
   const {
     register,
@@ -55,7 +64,9 @@ export default function LoginPage() {
         })
       );
 
-      router.push("/dashboard");
+      const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const targetUrl = searchParams?.get("redirect") || "/dashboard";
+      router.replace(targetUrl);
     } catch (err: unknown) {
       let message = "Invalid credentials or unable to reach server";
       if (err && typeof err === "object" && "response" in err) {

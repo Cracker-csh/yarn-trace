@@ -166,13 +166,12 @@ apiClient.interceptors.response.use(
       isRefreshing = false;
 
       localStorage.removeItem("yarntrace_access_token");
-
       localStorage.removeItem("yarntrace_refresh_token");
-
       localStorage.removeItem("yarntrace_user");
+      document.cookie = "yarntrace_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
 
       if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       }
 
       return Promise.reject(error);
@@ -193,8 +192,8 @@ apiClient.interceptors.response.use(
       } = response.data.data;
 
       localStorage.setItem("yarntrace_access_token", newAccessToken);
-
       localStorage.setItem("yarntrace_refresh_token", newRefreshToken);
+      document.cookie = `yarntrace_access_token=${encodeURIComponent(newAccessToken)}; path=/; max-age=604800; SameSite=Lax`;
 
       if (user) {
         localStorage.setItem("yarntrace_user", JSON.stringify(user));
@@ -225,13 +224,12 @@ apiClient.interceptors.response.use(
       processQueue(refreshError as Error, null);
 
       localStorage.removeItem("yarntrace_access_token");
-
       localStorage.removeItem("yarntrace_refresh_token");
-
       localStorage.removeItem("yarntrace_user");
+      document.cookie = "yarntrace_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
 
       if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       }
 
       return Promise.reject(refreshError);

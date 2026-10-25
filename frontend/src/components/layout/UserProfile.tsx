@@ -13,15 +13,20 @@ export default function UserProfile() {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
+    setIsOpen(false);
     dispatch(logout());
-    router.push("/login");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
   };
 
-  const displayName = user ? `${user.firstName} ${user.lastName}` : "Operator User";
-  const roleName = user?.role?.name || "Stock Head";
-  const initials = user
-    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    : "YT";
+  if (!user) {
+    return null;
+  }
+
+  const displayName = `${user.firstName} ${user.lastName}`;
+  const roleName = user.role?.name || "User";
+  const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() || "YT";
 
   return (
     <div className="relative">
@@ -52,7 +57,7 @@ export default function UserProfile() {
           <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white p-2 shadow-modal border border-slate-200 z-50 animate-in fade-in slide-in-from-top-1">
             <div className="px-3 py-2 border-b border-slate-100 mb-1">
               <p className="text-xs font-semibold text-slate-900">{displayName}</p>
-              <p className="text-[11px] text-slate-400 truncate">{user?.email || "operator@yarntrace.com"}</p>
+              <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
               <div className="mt-1.5 inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                 <Shield className="h-3 w-3 text-brand-600" />
                 {roleName}

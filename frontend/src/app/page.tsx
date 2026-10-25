@@ -7,14 +7,17 @@ import { useAppSelector } from "../store/hooks";
 export default function Home() {
   const router = useRouter();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isInitialized = useAppSelector((state) => state.auth.isInitialized);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/dashboard");
-    } else {
-      router.replace("/login");
+    if (isInitialized) {
+      if (isAuthenticated) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/login");
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isInitialized, isAuthenticated, router]);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-slate-50">
