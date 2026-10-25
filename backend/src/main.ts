@@ -3,7 +3,8 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import compression from 'compression';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const compression = require('compression');
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -45,7 +46,7 @@ async function bootstrap() {
 
   // Response Compression (Gzip / Deflate for fast JSON transfers)
   app.use(
-    compression({
+    (compression as any)({
       threshold: 1024, // only compress responses >= 1KB
     }),
   );
