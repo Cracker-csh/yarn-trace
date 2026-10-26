@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { Search, Bell, HelpCircle, Menu, Building2 } from "lucide-react";
 import { useAppDispatch } from "../../store/hooks";
 import { toggleMobileMenu } from "../../store/slices/uiSlice";
@@ -21,6 +23,24 @@ export default function TopNav() {
         >
           <Menu className="h-5 w-5" />
         </button>
+
+        {/* Mobile / Small Screen Navbar Logo */}
+        <Link
+          href="/dashboard"
+          className="flex lg:hidden items-center gap-2 shrink-0 mr-1 group"
+        >
+          <Image
+            src="/logo-icon.png"
+            alt="YarnTrace Logo"
+            width={28}
+            height={28}
+            className="h-7 w-7 object-contain transition-transform group-hover:scale-105"
+            priority
+          />
+          <span className="font-display text-sm font-bold tracking-tight text-slate-900 hidden xs:inline">
+            Yarn<span className="text-brand-600">Trace</span>
+          </span>
+        </Link>
 
         <div className="hidden sm:flex items-center gap-2 border-r border-slate-200 pr-3 md:pr-4 shrink-0">
           <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">

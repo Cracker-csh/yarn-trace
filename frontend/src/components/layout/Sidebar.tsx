@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Layers,
@@ -109,10 +110,17 @@ export default function Sidebar({ isMobile = false, onMobileClose }: SidebarProp
               onMobileClose();
             }
           }}
-          className="flex items-center gap-2.5 overflow-hidden"
+          className="flex items-center gap-2.5 overflow-hidden group"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm shadow-brand-500/20">
-            <Layers className="h-5 w-5" />
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white border border-slate-150 shadow-sm transition-transform group-hover:scale-105">
+            <Image
+              src="/logo-icon.png"
+              alt="YarnTrace Logo"
+              width={36}
+              height={36}
+              className="h-8 w-8 object-contain"
+              priority
+            />
           </div>
           {!effectiveCollapsed && (
             <div className="flex flex-col">

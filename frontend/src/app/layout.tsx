@@ -22,6 +22,14 @@ export const metadata: Metadata = {
   title: "YarnTrace — Yarn Inventory & Production Traceability System",
   description:
     "Enterprise platform for end-to-end yarn traceability, real-time stock balances in KG, production lot allocations, and dispatch tracking.",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({

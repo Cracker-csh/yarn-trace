@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -86,14 +87,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-lg shadow-brand-500/20 mb-3">
-            <Layers className="h-6 w-6" />
+          <div className="relative mb-3 flex items-center justify-center p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-md">
+            <Image
+              src="/logo.png"
+              alt="YarnTrace Enterprise Logo"
+              width={220}
+              height={190}
+              className="h-20 w-auto object-contain"
+              priority
+            />
           </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">
-            Yarn<span className="text-brand-600">Trace</span>
-          </h1>
-          <p className="mt-1 text-xs text-slate-500 max-w-xs">
-            Yarn Inventory & Production Traceability System
+          <p className="mt-1 text-xs font-medium text-slate-500 max-w-xs">
+            Enterprise Yarn Inventory & Production Traceability Platform
           </p>
         </div>
 
