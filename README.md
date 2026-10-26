@@ -1,6 +1,8 @@
 <div align="center">
 
-  <img src="frontend/public/logo.png" alt="YarnTrace Enterprise Logo" width="280" />
+  <a href="https://github.com/bhumitsoni20/YarnTrace">
+    <img src="frontend/public/logo-card.png" alt="YarnTrace Enterprise Logo" width="280" />
+  </a>
 
   <h1>YarnTrace</h1>
   <p><strong>Enterprise Yarn Inventory & Production Traceability System</strong></p>
