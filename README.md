@@ -1,7 +1,13 @@
 <div align="center">
 
+<a href="https://github.com/bhumitsoni20/YarnTrace">
+  <img src="./YarnTrace-Logo.png" alt="YarnTrace Enterprise Logo" width="240" />
+</a>
+
+<br />
+
 <!-- Animated Header Banner -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=1,12,24,30&height=230&section=header&text=YarnTrace&fontSize=70&fontAlignY=36&desc=Enterprise%20Yarn%20Inventory%20%26%20Production%20Traceability%20System&descFontSize=19&descAlignY=62" width="100%" alt="YarnTrace Banner" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=1,12,24,30&height=200&section=header&text=YarnTrace&fontSize=64&fontAlignY=36&desc=Enterprise%20Yarn%20Inventory%20%26%20Production%20Traceability%20System&descFontSize=18&descAlignY=62" width="100%" alt="YarnTrace Banner" />
 
 <!-- Dynamic Animated Typing SVG -->
 <p align="center">
