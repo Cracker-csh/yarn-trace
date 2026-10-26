@@ -1,13 +1,10 @@
 <div align="center">
 
-<a href="https://github.com/bhumitsoni20/YarnTrace">
-  <img src="./YarnTrace-Logo.png" alt="YarnTrace Enterprise Logo" width="240" />
-</a>
+  <img src="frontend/public/logo.png" alt="YarnTrace Enterprise Logo" width="280" />
 
-<br />
-
-<!-- Animated Header Banner -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=1,12,24,30&height=200&section=header&text=YarnTrace&fontSize=64&fontAlignY=36&desc=Enterprise%20Yarn%20Inventory%20%26%20Production%20Traceability%20System&descFontSize=18&descAlignY=62" width="100%" alt="YarnTrace Banner" />
+  <h1>YarnTrace</h1>
+  <p><strong>Enterprise Yarn Inventory & Production Traceability System</strong></p>
+  <p><i>Precision Yarn Stock Accounting • Multi-Team Floor Consumptions • Two-Way Traceability</i></p>
 
 <!-- Dynamic Animated Typing SVG -->
 <p align="center">
