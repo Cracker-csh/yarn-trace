@@ -4,7 +4,6 @@
     <img src="frontend/public/logo-card.png" alt="YarnTrace Enterprise Logo" width="280" />
   </a>
 
-  <h1>YarnTrace</h1>
   <p><strong>Enterprise Yarn Inventory & Production Traceability System</strong></p>
   <p><i>Precision Yarn Stock Accounting • Multi-Team Floor Consumptions • Two-Way Traceability</i></p>
 
